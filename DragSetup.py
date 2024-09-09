@@ -1,4 +1,4 @@
-from math import pi, exp, sqrt
+from math import pi, exp, sqrt, copysign
 
 
 def base_cross_area(body_diameter, fin_thickness, fin_height):
@@ -65,4 +65,4 @@ class DragSetup:
     def calculate_drag_force(self, velocity, altitude):
         """Calculate the drag force at a given velocity and altitude."""
         air_density = self.atmosphere.density(altitude)
-        return drag_force(self.cross_area, air_density, self.drag_coef, velocity)
+        return drag_force(self.cross_area, air_density, self.drag_coef, velocity)*copysign(1, -velocity)
