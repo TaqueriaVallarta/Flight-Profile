@@ -40,5 +40,11 @@ def initialize():
     motor = Motor(wet_mass, burn_time, mean_thrust)
 
     dry_mass = 80  # Kilograms
+    return Rocket(drag_setup, motor, dry_mass)
 
-    rocket = Rocket(drag_setup, motor, dry_mass)
+if __name__ == '__main__':
+    rocket = initialize()
+    time = 0
+    time_step = .1
+    while rocket.height_agl >=0:
+        r
