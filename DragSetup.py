@@ -10,11 +10,6 @@ def drag_force(cross_area, air_density, drag_coef, velocity):
     return cross_area * air_density * drag_coef * (velocity ** 2)
 
 
-# Self-Explanatory
-def inches_to_meters(inches):
-    return (inches * 2.54) / 100
-
-
 # Takes in the input/initial values and has methods to calculate other stuff
 class Atmosphere:
     def __init__(self, temp_0, p_0, h_0):
@@ -56,9 +51,11 @@ class Atmosphere:
         return sqrt(1.4 * self.R * self.temperature(h) / self.M)
 
 
+# Makes DragSetup so that the drag body is made. Drag Coef may end up being a function, we'll see
+# Initializes Drag with US Standard Atmosphere and and 8 inch body tube
 class DragSetup:
-    def __init__(self, atmosphere, body_diameter, fin_thickness, fin_height, drag_coef):
-        self.atmosphere = atmosphere  # Instance of Atmosphere class
+    def __init__(self, fin_thickness, fin_height, drag_coef, temp_0=288.15, p_0=101125, h_0=0, body_diameter=8*.0252):
+        self.atmosphere = Atmosphere(temp_0, p_0, h_0)  # Instance of Atmosphere class
         self.body_diameter = body_diameter  # Diameter of the rocket body in meters
         self.fin_thickness = fin_thickness  # Thickness of the fins in meters
         self.fin_height = fin_height  # Height of the fins in meters
@@ -69,20 +66,3 @@ class DragSetup:
         """Calculate the drag force at a given velocity and altitude."""
         air_density = self.atmosphere.density(altitude)
         return drag_force(self.cross_area, air_density, self.drag_coef, velocity)
-
-
-# in future maybe make this a class, with every all ready to go for simulation
-def main():
-    pressure_0 = 101125
-    temperature_0 = 288.15
-    height_0 = 0
-    atmo = Atmosphere(temperature_0, pressure_0, height_0)
-
-    diameter = inches_to_meters(8)
-    fin_thickness = inches_to_meters(.5)
-    fin_height = inches_to_meters(12)
-
-    drag_setup = DragSetup(atmo, diameter, fin_thickness, fin_height, drag_coef=0.5)
-
-
-
