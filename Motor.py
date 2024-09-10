@@ -4,13 +4,15 @@ class Motor:
         self.burn_time = burn_time
         self.mean_thrust = mean_thrust
 
-    def mass(self,time):
+    # Uses constant mass flow rate
+    def mass(self, time):
         if time <= self.burn_time:
-            return self.wet_mass-(self.wet_mass/self.burn_time)*time
+            return self.wet_mass - (self.wet_mass / self.burn_time) * time
         else:
             return 0
 
-    def thrust(self,time):
+    # todo: make thrust somewhat normal (may add thrust curve?)
+    def thrust(self, time):
         if time <= self.burn_time:
             return self.mean_thrust
         else:
