@@ -11,7 +11,7 @@ def inches_to_meters(inches):
 
 
 class Rocket:
-    def __init__(self, drag_setup: DragSetup, motor: Motor, dry_mass, initial_height_asl=0):
+    def __init__(self, drag_setup: DragSetup, motor: Motor, dry_mass, initial_height_asl=0.0):
         self.drag_setup = drag_setup  # drag setup class
         self.motor = motor  # motor class
         self.dry_mass = dry_mass  # dry mass in kg
@@ -51,21 +51,22 @@ def initialize():
 
     # Initializes with 8" body tube
     drag_setup = DragSetup(fin_thickness, fin_height, drag_coef)
+    drag_setup.atmosphere.p_0 = 97866.6421  # historical pressure for june
+    drag_setup.atmosphere.h_0 = 1219.2  # Mean height of WSMR ASL in m
+    drag_setup.atmosphere.temp_0 = 27 + 273.15  # Mean temp of june (mean of high hand low)
 
-    wet_mass = 20  # Kilograms
-    burn_time = 20  # Seconds
-    mean_thrust = 4000  # Newtons
-    motor = Motor(wet_mass, burn_time, mean_thrust)
+    wet_mass_motor = 210  # Kilograms
+    burn_time = 18  # Seconds
+    mean_thrust = 10000  # Newtons
+    motor = Motor(wet_mass_motor, burn_time, mean_thrust)
 
-    dry_mass = 80  # Kilograms
-    return Rocket(drag_setup, motor, dry_mass)
+    dry_mass_rocket = 1 / 2 * wet_mass_motor  # Kilograms
+    initial_height_asl = drag_setup.atmosphere.h_0
+    return Rocket(drag_setup, motor, dry_mass_rocket, initial_height_asl)
 
 
 if __name__ == '__main__':
-    print("Height", ",", "Velocity", ",",
-          "Acceleration", ",",
-          "Time", ",", "Mass", ",",
-          "Drag Force")
+    # print("Height", ",", "Velocity", ",", "Acceleration", ",", "Time", ",", "Mass", ",","Drag Force")
     rocket = initialize()
     current_time = 0
     time_step = .1
@@ -75,7 +76,8 @@ if __name__ == '__main__':
         rocket.rkt_rk4_step(current_time, time_step)
         # Convert asl to agl
         rocket.update_agl()
-        print(rocket.height_agl, current_time)
+
+        # print(rocket.height_agl, current_time)
         # output the values with space between them
         # Done: setup csv file export using pandas (ask ChatGPT about it)
         # numpy is good for making the arrays
