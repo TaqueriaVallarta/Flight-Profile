@@ -38,6 +38,9 @@ class Rocket:
     def update_agl(self):
         self.height_agl = self.height_asl - self.initial_height_asl
 
+    def mach(self):
+        return abs(self.velocity / self.drag_setup.atmosphere.speed_of_sound(self.height_asl))
+
 
 # initializes all the values
 def initialize():
@@ -74,7 +77,7 @@ if __name__ == '__main__':
         rocket.update_agl()
         print(rocket.height_agl, current_time)
         # output the values with space between them
-        # TODO: setup csv file export using pandas (ask ChatGPT about it)
+        # Done: setup csv file export using pandas (ask ChatGPT about it)
         # numpy is good for making the arrays
         # TODO: decide between MatPlotLib and Sheets/Excel for presentation of data
 
@@ -86,8 +89,9 @@ if __name__ == '__main__':
                                 rocket.drag_setup.atmosphere.density(rocket.height_agl),
                                 rocket.drag_setup.atmosphere.pressure(rocket.height_agl),
                                 rocket.drag_setup.atmosphere.temperature(rocket.height_agl),
-                                rocket.drag_setup.atmosphere.speed_of_sound(rocket.height_agl),
-                                rocket.drag_setup.drag_coef])
+                                rocket.drag_setup.atmosphere.speed_of_sound(rocket.height_asl),
+                                rocket.drag_setup.drag_coef,
+                                rocket.mach()])
 
         # print(rocket.height_agl, ",", rocket.velocity, ",",
         #      rocket.acceleration(rocket.height_agl, rocket.velocity, current_time), ",",
@@ -99,5 +103,5 @@ if __name__ == '__main__':
     Simulation_dataframe = pd.DataFrame(simulation_data,
                                         columns=['Time Stamp', 'Height_agl', 'Height_asl', "Velocity", 'Acceleration',
                                                  'Mass', 'Thrust', 'Drag', 'Air_Density', 'Air_pressure',
-                                                 'Air_Temperature', 'Speed_of_sound', 'Drag_Coefficient'])
+                                                 'Air_Temperature', 'Speed_of_sound', 'Drag_Coefficient', 'Mach'])
     Simulation_dataframe.to_csv("Simulation_data.csv")
