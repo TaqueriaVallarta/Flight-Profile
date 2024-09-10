@@ -1,4 +1,6 @@
 from math import pi, exp, sqrt, copysign
+from lib.Recovery import Parachute
+
 
 
 # TODO: setup drag reduction due to exhaust plume
@@ -21,7 +23,6 @@ class Atmosphere:
         self.R = 8.3144626  # Universal Gas Constant J/K*mol
         self.g = 9.81  # Gravitational acceleration, m/s^2
         self.L = 0.0065  # Temperature lapse rate, K/m
-        self.T0 = 288.15  # Standard temperature, K
         self.U = 11000.0  # Tropopause height, m
         self.H_tp = 6500.0  # measured in meters (got from wikipedia)
         self.gamma = 1.4  # measured for air at 0° C, TODO: find any differing values
@@ -54,7 +55,8 @@ class Atmosphere:
 # Makes DragSetup so that the drag body is made. Drag Coef may end up being a function, we'll see
 # Initializes Drag with US Standard Atmosphere and 8 inch body tube
 class DragSetup:
-    def __init__(self, fin_thickness, fin_height, drag_coef, temp_0=288.15, p_0=101125.0, h_0=0.00,
+    def __init__(self, fin_thickness, fin_height, drag_coef, reefed_parachute: Parachute, main_parachute: Parachute,
+                 temp_0=288.15, p_0=101125.0, h_0=0.00,
                  body_diameter=8 * .0252):
         self.atmosphere = Atmosphere(temp_0, p_0, h_0)  # Instance of Atmosphere class
         self.body_diameter = body_diameter  # Diameter of the rocket body in meters
@@ -62,8 +64,24 @@ class DragSetup:
         self.fin_height = fin_height  # Height of the fins in meters
         self.drag_coef = drag_coef  # Drag coefficient
         self.cross_area = base_cross_area(body_diameter, fin_thickness, fin_height)  # Cross-sectional area
+        self.reefed_parachute = reefed_parachute
+        self.main_parachute = main_parachute
 
-    def calculate_drag_force(self, velocity, altitude):
+    def calculate_drag_force(self, velocity, altitude, time):
         """Calculate the drag force at a given velocity and altitude."""
+        if velocity < 0:
+            if (altitude - self.atmosphere.h_0) <= self.main_parachute.deployment_altitude:
+                if not self.main_parachute.DeployStatus:
+                    self.main_parachute.DeployStatus = True
+                    self.main_parachute.DeployTime = time
+                self.cross_area = self.main_parachute.cross_area(time)
+                self.drag_coef = self.main_parachute.drag_coefficient
+            else:
+                if not self.reefed_parachute.DeployStatus:
+                    self.reefed_parachute.DeployStatus = True
+                    self.reefed_parachute.DeployTime = time
+                self.cross_area = self.reefed_parachute.cross_area(time)
+                self.drag_coef = self.main_parachute.drag_coefficient
+
         air_density = self.atmosphere.density(altitude)
         return drag_force(self.cross_area, air_density, self.drag_coef, velocity) * copysign(1, -velocity)
