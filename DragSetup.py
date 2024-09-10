@@ -1,6 +1,7 @@
 from math import pi, exp, sqrt, copysign
 
-#TODO: setup drag reduction due to exhaust plume
+
+# TODO: setup drag reduction due to exhaust plume
 def base_cross_area(body_diameter, fin_thickness, fin_height):
     return (pi * (body_diameter / 2) ** 2) + 3 * fin_height * fin_thickness
 
@@ -21,8 +22,8 @@ class Atmosphere:
         self.g = 9.81  # Gravitational acceleration, m/s^2
         self.L = 0.0065  # Temperature lapse rate, K/m
         self.T0 = 288.15  # Standard temperature, K
-        self.U = 11000  # Tropopause height, m
-        self.H_tp = 6500  # measured in meters (got from wikipedia)
+        self.U = 11000.0  # Tropopause height, m
+        self.H_tp = 6500.0  # measured in meters (got from wikipedia)
         self.gamma = 1.4  # measured for air at 0° C, TODO: find any differing values
 
     def temperature(self, h):
@@ -35,10 +36,10 @@ class Atmosphere:
     def pressure(self, h):
         """Calculate the pressure at a given altitude h."""
         if h >= self.U:
-            return (self.p_0 * (1 - (self.L*h / self.temp_0)) ** ((self.g * self.M) / (self.L * self.R))
+            return (self.p_0 * (1 - (self.L * h / self.temp_0)) ** ((self.g * self.M) / (self.L * self.R))
                     * exp(-(h - self.U) / self.H_tp))
         else:
-            return self.p_0 * (1 - (self.L*h / self.temp_0)) ** ((self.g * self.M) / (self.L * self.R))
+            return self.p_0 * (1 - (self.L * h / self.temp_0)) ** ((self.g * self.M) / (self.L * self.R))
 
     def density(self, h):
         """Calculate the air density at a given altitude h."""
@@ -53,7 +54,8 @@ class Atmosphere:
 # Makes DragSetup so that the drag body is made. Drag Coef may end up being a function, we'll see
 # Initializes Drag with US Standard Atmosphere and 8 inch body tube
 class DragSetup:
-    def __init__(self, fin_thickness, fin_height, drag_coef, temp_0=288.15, p_0=101125, h_0=0, body_diameter=8*.0252):
+    def __init__(self, fin_thickness, fin_height, drag_coef, temp_0=288.15, p_0=101125.0, h_0=0.00,
+                 body_diameter=8 * .0252):
         self.atmosphere = Atmosphere(temp_0, p_0, h_0)  # Instance of Atmosphere class
         self.body_diameter = body_diameter  # Diameter of the rocket body in meters
         self.fin_thickness = fin_thickness  # Thickness of the fins in meters
@@ -64,4 +66,4 @@ class DragSetup:
     def calculate_drag_force(self, velocity, altitude):
         """Calculate the drag force at a given velocity and altitude."""
         air_density = self.atmosphere.density(altitude)
-        return drag_force(self.cross_area, air_density, self.drag_coef, velocity)*copysign(1, -velocity)
+        return drag_force(self.cross_area, air_density, self.drag_coef, velocity) * copysign(1, -velocity)
