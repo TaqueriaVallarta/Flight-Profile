@@ -30,6 +30,7 @@ class Rocket:
         force = drag + thrust + weight
         return force / self.mass(time)
 
+    # Update self using the rk4 function
     def rkt_rk4_step(self, time, dt):
         self.height_asl, self.velocity = rk4_step(self.height_asl, self.velocity, self.acceleration, dt, time)
 
