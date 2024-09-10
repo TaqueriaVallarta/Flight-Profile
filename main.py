@@ -81,14 +81,14 @@ def initialize():
 
     dry_mass_rocket = 1 / 2 * wet_mass_motor  # Kilograms
     initial_height_asl = drag_setup.atmosphere.h_0
-    return Rocket(drag_setup, motor, dry_mass_rocket, initial_height_asl)
+    return Rocket(drag_setup, motor, dry_mass_rocket, initial_height_asl=initial_height_asl)
 
 
 if __name__ == '__main__':
     # print("Height", ",", "Velocity", ",", "Acceleration", ",", "Time", ",", "Mass", ",","Drag Force")
     rocket = initialize()
 
-    simulation_data = rocket.outputs()
+    simulation_data = [rocket.outputs()]
 
     while rocket.height_agl >= 0:
         # adding data to a list for csv file
