@@ -1,4 +1,5 @@
 from math import pi, exp, sqrt, copysign
+from lib.Recovery import Parachute
 
 # TODO: setup drag reduction due to exhaust plume
 def base_cross_area(body_diameter, fin_thickness, fin_height):
@@ -52,7 +53,7 @@ class Atmosphere:
 # Makes DragSetup so that the drag body is made. Drag Coef may end up being a function, we'll see
 # Initializes Drag with US Standard Atmosphere and 8 inch body tube
 class DragSetup:
-    def __init__(self, fin_thickness, fin_height, drag_coef, temp_0=288.15, p_0=101125.0, h_0=0.00,
+    def __init__(self, fin_thickness, fin_height, drag_coef, reefed_parachute: Parachute, main_parachute: Parachute, temp_0=288.15, p_0=101125.0, h_0=0.00,
                  body_diameter=8 * .0252):
         self.atmosphere = Atmosphere(temp_0, p_0, h_0)  # Instance of Atmosphere class
         self.body_diameter = body_diameter  # Diameter of the rocket body in meters
@@ -60,8 +61,20 @@ class DragSetup:
         self.fin_height = fin_height  # Height of the fins in meters
         self.drag_coef = drag_coef  # Drag coefficient
         self.cross_area = base_cross_area(body_diameter, fin_thickness, fin_height)  # Cross-sectional area
+        self.reefed_parachute = reefed_parachute
+        self.main_parachute = main_parachute
 
-    def calculate_drag_force(self, velocity, altitude):
+    def calculate_drag_force(self, velocity, altitude, dt):
         """Calculate the drag force at a given velocity and altitude."""
+        cross_area = self.cross_area
+        drag_coef = self.drag_coef
+        if velocity <= 0:
+            if altitude <= self.main_parachute.deployment_altitude:
+                cross_area = self.main_parachute.cross_area(dt)
+                drag_coef = self.main_parachute.drag_coefficient
+            else:
+                cross_area = self.reefed_parachute.cross_area(dt)
+                drag_coef = self.main_parachute.drag_coefficient
+        
         air_density = self.atmosphere.density(altitude)
-        return drag_force(self.cross_area, air_density, self.drag_coef, velocity) * copysign(1, -velocity)
+        return drag_force(cross_area, air_density, drag_coef, velocity) * copysign(1, -velocity)

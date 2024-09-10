@@ -1,8 +1,9 @@
-from lib.Drag import DragSetup
 from lib.Drag.DragSetup import DragSetup
 from lib.Motor.Motor import Motor
+from lib.Recovery import Parachute
 from lib.rk4 import rk4_step
 import pandas as pd
+from math import pi
 
 
 # Self-Explanatory
@@ -28,7 +29,7 @@ class Rocket:
         return self.dry_mass + self.motor.mass(time)
 
     def acceleration(self, height_asl, velocity, time):
-        drag = self.drag_setup.calculate_drag_force(velocity, height_asl)
+        drag = self.drag_setup.calculate_drag_force(velocity, height_asl, self.dt)
         thrust = self.motor.thrust(time)
         weight = -self.gravity * self.mass(time)
         if self.height_asl < self.initial_height_asl:
@@ -52,7 +53,7 @@ class Rocket:
         return [self.time, self.height_agl, self.height_asl, self.velocity,
                 self.acceleration(rocket.height_agl, self.velocity, self.time),
                 self.mass(self.time), self.motor.thrust(self.time),
-                self.drag_setup.calculate_drag_force(self.velocity, self.height_agl),
+                self.drag_setup.calculate_drag_force(self.velocity, self.height_agl, self.dt),
                 self.drag_setup.atmosphere.density(self.height_agl),
                 self.drag_setup.atmosphere.pressure(self.height_agl),
                 self.drag_setup.atmosphere.temperature(self.height_agl),
@@ -75,8 +76,21 @@ def initialize():
     fin_height = inches_to_meters(12)
     drag_coef = .5
 
+    cross_area_main = pi*(3/2)**2 # area in m^2
+    drag_coef_main = 2
+    inflation_time_main = 5 #time in seconds
+    deployment_altitude = 600 # meters
+    main_parachute = Parachute(cross_area_main, drag_coef_main, inflation_time_main, deployment_altitude=deployment_altitude)
+
+    cross_area_reefed = pi*(3/2)**2 # area in m^2
+    drag_coef_reefed = 2
+    inflation__time_reefed = 5 #time in seconds
+    reefed_parachute = Parachute(cross_area_reefed, drag_coef_reefed, inflation__time_reefed)
+
+
+
     # Initializes with 8" body tube
-    drag_setup = DragSetup(fin_thickness, fin_height, drag_coef)
+    drag_setup = DragSetup(fin_thickness, fin_height, drag_coef, reefed_parachute, main_parachute)
     drag_setup.atmosphere.p_0 = 97866.6421  # historical pressure for june
     drag_setup.atmosphere.h_0 = 1219.2  # Mean height of WSMR ASL in m
     drag_setup.atmosphere.temp_0 = 27 + 273.15  # Mean temp of june (mean of high hand low)
