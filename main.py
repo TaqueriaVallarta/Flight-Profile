@@ -1,5 +1,5 @@
 import DragSetup
-from DragSetup import Atmosphere, DragSetup, drag_force
+from DragSetup import DragSetup
 from Motor import Motor
 
 
@@ -20,14 +20,14 @@ class Rocket:
         self.gravity = self.drag_setup.atmosphere.g
 
     def mass(self, time):
-        return self.dry_mass+self.motor.mass(time)
+        return self.dry_mass + self.motor.mass(time)
 
     def acceleration(self, height, velocity, time):
         drag = self.drag_setup.calculate_drag_force(velocity, height)
         thrust = self.motor.thrust(time)
-        weight = -self.gravity*self.mass(time)
-        force = drag+thrust+weight
-        return force/self.mass(time)
+        weight = -self.gravity * self.mass(time)
+        force = drag + thrust + weight
+        return force / self.mass(time)
 
 
 # initializes all the values
@@ -99,8 +99,9 @@ if __name__ == '__main__':
                                                       rocket.acceleration, time_step, current_time)
         rocket.height_agl = rocket.height_asl - rocket.initial_height_asl
 
-        print(rocket.height_agl,",", rocket.velocity, ",", rocket.acceleration(rocket.height_agl,rocket.velocity,current_time), ",",
-              current_time, ",", rocket.mass(current_time), ",", rocket.drag_setup.calculate_drag_force(rocket.velocity, rocket.height_agl))
+        print(rocket.height_agl, ",", rocket.velocity, ",",
+              rocket.acceleration(rocket.height_agl, rocket.velocity, current_time), ",",
+              current_time, ",", rocket.mass(current_time), ",",
+              rocket.drag_setup.calculate_drag_force(rocket.velocity, rocket.height_agl))
 
         current_time += time_step
-
