@@ -1,7 +1,7 @@
 import DragSetup
 from DragSetup import DragSetup
 from Motor import Motor
-from rk4 import rk4_step
+from lib.rk4 import rk4_step
 import pandas as pd
 
 
