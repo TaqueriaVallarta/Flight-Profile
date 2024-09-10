@@ -1,6 +1,5 @@
 from math import pi, exp, sqrt, copysign
 
-
 # TODO: setup drag reduction due to exhaust plume
 def base_cross_area(body_diameter, fin_thickness, fin_height):
     return (pi * (body_diameter / 2) ** 2) + 3 * fin_height * fin_thickness
@@ -21,7 +20,6 @@ class Atmosphere:
         self.R = 8.3144626  # Universal Gas Constant J/K*mol
         self.g = 9.81  # Gravitational acceleration, m/s^2
         self.L = 0.0065  # Temperature lapse rate, K/m
-        self.T0 = 288.15  # Standard temperature, K
         self.U = 11000.0  # Tropopause height, m
         self.H_tp = 6500.0  # measured in meters (got from wikipedia)
         self.gamma = 1.4  # measured for air at 0° C, TODO: find any differing values
