@@ -1,6 +1,7 @@
 from math import pi, exp, sqrt, copysign
 
-#TODO: setup drag reduction due to exhaust plume
+
+# TODO: setup drag reduction due to exhaust plume
 def base_cross_area(body_diameter, fin_thickness, fin_height):
     return (pi * (body_diameter / 2) ** 2) + 3 * fin_height * fin_thickness
 
@@ -35,10 +36,10 @@ class Atmosphere:
     def pressure(self, h):
         """Calculate the pressure at a given altitude h."""
         if h >= self.U:
-            return (self.p_0 * (1 - (self.L*h / self.temp_0)) ** ((self.g * self.M) / (self.L * self.R))
+            return (self.p_0 * (1 - (self.L * h / self.temp_0)) ** ((self.g * self.M) / (self.L * self.R))
                     * exp(-(h - self.U) / self.H_tp))
         else:
-            return self.p_0 * (1 - (self.L*h / self.temp_0)) ** ((self.g * self.M) / (self.L * self.R))
+            return self.p_0 * (1 - (self.L * h / self.temp_0)) ** ((self.g * self.M) / (self.L * self.R))
 
     def density(self, h):
         """Calculate the air density at a given altitude h."""
@@ -65,4 +66,4 @@ class DragSetup:
     def calculate_drag_force(self, velocity, altitude):
         """Calculate the drag force at a given velocity and altitude."""
         air_density = self.atmosphere.density(altitude)
-        return drag_force(self.cross_area, air_density, self.drag_coef, velocity)*copysign(1, -velocity)
+        return drag_force(self.cross_area, air_density, self.drag_coef, velocity) * copysign(1, -velocity)
