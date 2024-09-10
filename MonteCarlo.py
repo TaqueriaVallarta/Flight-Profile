@@ -18,7 +18,7 @@ wet_mass_min, wet_mass_max = plusminus_x_percent(rocket1.motor.wet_mass, 20)
 burn_time_min, burn_time_max = plusminus_x_percent(rocket1.motor.burn_time, 20)
 thrust_min, thrust_max = plusminus_x_percent(rocket1.motor.mean_thrust, 20)
 p_0_min, p_0_max = plusminus_x_percent(rocket1.drag_setup.atmosphere.p_0, 2)
-temp_0_min, temp_0_max = plusminus_x_percent(rocket1.drag_setup.atmosphere.temp_0, 10)
+temp_0_min, temp_0_max = plusminus_x_percent(rocket1.drag_setup.atmosphere.temp_0, 2)
 
 # Results storage
 apogees = []
