@@ -34,12 +34,11 @@ class Atmosphere:
 
     def pressure(self, h):
         """Calculate the pressure at a given altitude h."""
-        temp = self.temperature(h)
         if h >= self.U:
-            return (self.p_0 * (1 - (temp / self.temp_0)) ** ((self.g * self.M) / (self.L * self.R))
+            return (self.p_0 * (1 - (self.L*h / self.temp_0)) ** ((self.g * self.M) / (self.L * self.R))
                     * exp(-(h - self.U) / self.H_tp))
         else:
-            return self.p_0 * (1 - (temp / self.temp_0)) ** ((self.g * self.M) / (self.L * self.R))
+            return self.p_0 * (1 - (self.L*h / self.temp_0)) ** ((self.g * self.M) / (self.L * self.R))
 
     def density(self, h):
         """Calculate the air density at a given altitude h."""
@@ -52,7 +51,7 @@ class Atmosphere:
 
 
 # Makes DragSetup so that the drag body is made. Drag Coef may end up being a function, we'll see
-# Initializes Drag with US Standard Atmosphere and and 8 inch body tube
+# Initializes Drag with US Standard Atmosphere and 8 inch body tube
 class DragSetup:
     def __init__(self, fin_thickness, fin_height, drag_coef, temp_0=288.15, p_0=101125, h_0=0, body_diameter=8*.0252):
         self.atmosphere = Atmosphere(temp_0, p_0, h_0)  # Instance of Atmosphere class
