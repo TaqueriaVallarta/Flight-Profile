@@ -36,7 +36,7 @@ class Rocket:
         self.height_asl, self.velocity = rk4_step(self.height_asl, self.velocity, self.acceleration, dt, time)
 
     def update_agl(self):
-        self.height_agl = self.height_agl - self.initial_height_asl
+        self.height_agl = self.height_asl - self.initial_height_asl
 
 
 # initializes all the values
@@ -72,26 +72,32 @@ if __name__ == '__main__':
         rocket.rkt_rk4_step(current_time, time_step)
         # Convert asl to agl
         rocket.update_agl()
-
+        print(rocket.height_agl, current_time)
         # output the values with space between them
         # TODO: setup csv file export using pandas (ask ChatGPT about it)
         # numpy is good for making the arrays
         # TODO: decide between MatPlotLib and Sheets/Excel for presentation of data
-        
-        # adding data to a list for csv file
-        simulation_data.append([current_time,rocket.height_agl, rocket.height_asl,rocket.velocity,
-            rocket.acceleration(rocket.height_agl, rocket.velocity, current_time), 
-            rocket.mass(current_time), rocket.motor.thrust(current_time),rocket.drag_setup.calculate_drag_force(rocket.velocity, rocket.height_agl),
-            rocket.drag_setup.atmosphere.density(rocket.height_agl),rocket.drag_setup.atmosphere.pressure(rocket.height_agl),rocket.drag_setup.atmosphere.temperature(rocket.height_agl),
-            rocket.drag_setup.atmosphere.speed_of_sound(rocket.height_agl),rocket.drag_setup.drag_coef])
 
-        
-        print(rocket.height_agl, ",", rocket.velocity, ",",
-            rocket.acceleration(rocket.height_agl, rocket.velocity, current_time), ",",
-            current_time, ",", rocket.mass(current_time), ",",
-            rocket.drag_setup.calculate_drag_force(rocket.velocity, rocket.height_agl))
+        # adding data to a list for csv file
+        simulation_data.append([current_time, rocket.height_agl, rocket.height_asl, rocket.velocity,
+                                rocket.acceleration(rocket.height_agl, rocket.velocity, current_time),
+                                rocket.mass(current_time), rocket.motor.thrust(current_time),
+                                rocket.drag_setup.calculate_drag_force(rocket.velocity, rocket.height_agl),
+                                rocket.drag_setup.atmosphere.density(rocket.height_agl),
+                                rocket.drag_setup.atmosphere.pressure(rocket.height_agl),
+                                rocket.drag_setup.atmosphere.temperature(rocket.height_agl),
+                                rocket.drag_setup.atmosphere.speed_of_sound(rocket.height_agl),
+                                rocket.drag_setup.drag_coef])
+
+        # print(rocket.height_agl, ",", rocket.velocity, ",",
+        #      rocket.acceleration(rocket.height_agl, rocket.velocity, current_time), ",",
+        #      current_time, ",", rocket.mass(current_time), ",",
+        #      rocket.drag_setup.calculate_drag_force(rocket.velocity, rocket.height_agl))
 
         current_time += time_step
-    
-    Simulation_dataframe = pd.DataFrame(simulation_data,columns=['Time Stamp','Height_agl','Height_asl',"Velocity",'Acceleration','Mass','Thrust','Drag','Air_Density','Air_pressure','Air_Temperature','Speed_of_sound','Drag_Coefficient'])
+
+    Simulation_dataframe = pd.DataFrame(simulation_data,
+                                        columns=['Time Stamp', 'Height_agl', 'Height_asl', "Velocity", 'Acceleration',
+                                                 'Mass', 'Thrust', 'Drag', 'Air_Density', 'Air_pressure',
+                                                 'Air_Temperature', 'Speed_of_sound', 'Drag_Coefficient'])
     Simulation_dataframe.to_csv("Simulation_data.csv")
