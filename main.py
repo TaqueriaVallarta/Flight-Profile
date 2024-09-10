@@ -1,7 +1,7 @@
-import DragSetup
-from DragSetup import DragSetup
-from Motor import Motor
-from rk4 import rk4_step
+from lib.Drag import DragSetup
+from lib.Drag.DragSetup import DragSetup
+from lib.Motor.Motor import Motor
+from lib.rk4 import rk4_step
 import pandas as pd
 
 
@@ -60,6 +60,13 @@ class Rocket:
                 self.drag_setup.drag_coef,
                 self.mach()]
 
+    def sim_to_apogee(self):
+        while self.velocity >= 0:
+            self.rkt_rk4_step()
+            self.update_agl()
+
+            self.time += self.dt
+
 
 # initializes all the values
 def initialize():
@@ -100,7 +107,7 @@ if __name__ == '__main__':
 
         simulation_data.append(rocket.outputs())
 
-        print(rocket.height_agl, rocket.time)
+        # print(rocket.height_agl, rocket.time)
         # output the values with space between them
         # Done: setup csv file export using pandas (ask ChatGPT about it)
         # numpy is good for making the arrays
