@@ -1,5 +1,3 @@
-from sympy.printing.pretty.pretty_symbology import line_width
-
 from lib.Drag.DragSetup import DragSetup
 from lib.Motor.Motor import Motor
 from lib.Recovery import Parachute
