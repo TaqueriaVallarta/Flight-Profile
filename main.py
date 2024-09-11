@@ -1,3 +1,4 @@
+# %%
 from lib.Drag.DragSetup import DragSetup
 from lib.Motor.Motor import Motor
 from lib.Recovery import Parachute
@@ -31,7 +32,7 @@ class Rocket:
                      'Acceleration',
                      'Mass', 'Thrust', 'Drag', 'Air Density', 'Air Pressure',
                      'Air_Temperature', 'Speed of Sound', 'Drag Coefficient', 'Mach',
-                     'Cross-sectional Area'])
+                     'Cross-sectional Area', 'Flight State'])
         self.dataframe: pd.DataFrame
 
     def mass(self, time):
@@ -69,7 +70,20 @@ class Rocket:
                 self.drag_setup.atmosphere.speed_of_sound(self.height_msl),
                 self.drag_setup.drag_coef,
                 self.mach(),
-                self.drag_setup.cross_area]
+                self.drag_setup.cross_area,
+                self.flight_state()]
+
+    def flight_state(self):
+        if self.time <= self.motor.burn_time:
+            return "Motor Burning"
+        elif (self.acceleration(self.height_msl, self.velocity, self.time) < 0) and (self.velocity > 0):
+            return "Coasting"
+        elif self.drag_setup.main_parachute.DeployStatus:
+            return "Main Unreefed"
+        elif self.drag_setup.reefed_parachute.DeployStatus:
+            return "Main Reefed"
+        return ""
+
 
     def dataframe_update(self):
         data = self.output()
@@ -120,6 +134,7 @@ def initialize():
     return Rocket(drag_setup, motor, dry_mass_rocket, initial_height_msl=initial_height_msl)
 
 
+#%%
 if __name__ == '__main__':
     # print("Height", ",", "Velocity", ",", "Acceleration", ",", "Time", ",", "Mass", ",","Drag Force")
     # %% Generate rocket
@@ -146,15 +161,6 @@ if __name__ == '__main__':
         #      rocket.drag_setup.calculate_drag_force(rocket.velocity, rocket.height_agl))
 
         rocket.time += rocket.dt
-    # %%
-    dataframe = rocket.dataframe
-    time = dataframe['Time']
-    Height_AGL = dataframe['Height AGL']
-    Velocity = dataframe['Velocity']
-    Drag = dataframe['Drag']
-    plt.plot(time, Height_AGL)
-    plt.plot(time, Velocity)
-    plt.show()
     # %%
     print(rocket.dataframe)
     rocket.dataframe.to_csv("Simulation_data.csv")
