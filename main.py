@@ -1,9 +1,12 @@
+from sympy.printing.pretty.pretty_symbology import line_width
+
 from lib.Drag.DragSetup import DragSetup
 from lib.Motor.Motor import Motor
 from lib.Recovery import Parachute
 from lib.rk4 import rk4_step
 import pandas as pd
 from math import pi
+import matplotlib.pyplot as plt
 
 
 # Self-Explanatory
@@ -24,6 +27,14 @@ class Rocket:
         self.gravity = self.drag_setup.atmosphere.g
         self.time = time
         self.dt = dt
+        self.data_list = []
+        self.dataframe = pd.DataFrame(
+            columns=['Time', 'Height AGL', 'Height MSL', "Velocity",
+                     'Acceleration',
+                     'Mass', 'Thrust', 'Drag', 'Air Density', 'Air Pressure',
+                     'Air_Temperature', 'Speed of Sound', 'Drag Coefficient', 'Mach',
+                     'Cross-sectional Area'])
+        self.dataframe: pd.DataFrame
 
     def mass(self, time):
         return self.dry_mass + self.motor.mass(time)
@@ -49,7 +60,7 @@ class Rocket:
     def mach(self):
         return abs(self.velocity / self.drag_setup.atmosphere.speed_of_sound(self.height_msl))
 
-    def outputs(self):
+    def output(self):
         return [self.time, self.height_agl, self.height_msl, self.velocity,
                 self.acceleration(self.height_msl, self.velocity, self.time),
                 self.mass(self.time), self.motor.thrust(self.time),
@@ -61,6 +72,11 @@ class Rocket:
                 self.drag_setup.drag_coef,
                 self.mach(),
                 self.drag_setup.cross_area]
+
+    def dataframe_update(self):
+        data = self.output()
+        new_data = pd.DataFrame([data], columns=self.dataframe.columns)
+        self.dataframe = pd.concat([self.dataframe, new_data], ignore_index=True)
 
     def sim_to_apogee(self):
         while self.velocity >= 0:
@@ -108,9 +124,8 @@ def initialize():
 
 if __name__ == '__main__':
     # print("Height", ",", "Velocity", ",", "Acceleration", ",", "Time", ",", "Mass", ",","Drag Force")
+    # %% Generate rocket
     rocket = initialize()
-
-    simulation_data = [rocket.outputs()]
 
     while rocket.height_agl >= 0:
         # adding data to a list for csv file
@@ -120,9 +135,8 @@ if __name__ == '__main__':
         # Convert asl to agl
         rocket.update_agl()
 
-        simulation_data.append(rocket.outputs())
+        rocket.dataframe_update()
 
-        print(rocket.height_agl, rocket.time, rocket.velocity)
         # output the values with space between them
         # Done: setup csv file export using pandas (ask ChatGPT about it)
         # numpy is good for making the arrays
@@ -134,10 +148,15 @@ if __name__ == '__main__':
         #      rocket.drag_setup.calculate_drag_force(rocket.velocity, rocket.height_agl))
 
         rocket.time += rocket.dt
-
-    Simulation_dataframe = pd.DataFrame(simulation_data,
-                                        columns=['Time Stamp', 'Height_agl', 'Height_asl', "Velocity", 'Acceleration',
-                                                 'Mass', 'Thrust', 'Drag', 'Air_Density', 'Air_pressure',
-                                                 'Air_Temperature', 'Speed_of_sound', 'Drag_Coefficient',
-                                                 'Mach', 'Crossectional Area'])
-    Simulation_dataframe.to_csv("Simulation_data.csv")
+    # %%
+    dataframe = rocket.dataframe
+    time = dataframe['Time']
+    Height_AGL = dataframe['Height AGL']
+    Velocity = dataframe['Velocity']
+    Drag = dataframe['Drag']
+    plt.plot(time, Height_AGL)
+    plt.plot(time, Velocity)
+    plt.show()
+    # %%
+    print(rocket.dataframe)
+    rocket.dataframe.to_csv("Simulation_data.csv")
