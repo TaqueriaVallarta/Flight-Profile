@@ -84,11 +84,36 @@ class Rocket:
             return "Main Reefed"
         return ""
 
+    def events(self):
+        states = self.dataframe['Flight State']
+        events = [""] * states.size
+        for i, state in enumerate(states):
+            if i - 1 < 0:
+                continue
+            if state != states[i - 1]:
+                if state == "Coasting":
+                    events[i] = "Motor Burnout"
+                elif state == "Main Reefed":
+                    events[i] = "Apogee and Reef Deploy"
+                elif state == "Main Unreefed":
+                    events[i] = "Main Unreefing"
+                else:
+                    events[i] = ""
+        return events
+
+    def datalist_update(self):
+        data = self.output()
+        self.data_list.append(data)
 
     def dataframe_update(self):
-        data = self.output()
-        new_data = pd.DataFrame([data], columns=self.dataframe.columns)
-        self.dataframe = pd.concat([self.dataframe, new_data], ignore_index=True)
+        columns = self.dataframe.columns
+        for i, column in enumerate(columns):
+            series = []
+            for j in range(len(self.data_list)):
+                series.append(self.data_list[j][i])
+            self.dataframe[column] = series
+        self.dataframe['Events'] = self.events()
+        self.dataframe = self.dataframe.astype({'Time': float, 'Thrust': float, 'Flight State': str, 'Events': str})
 
     def sim_to_apogee(self):
         while self.velocity >= 0:
@@ -96,6 +121,9 @@ class Rocket:
             self.update_agl()
 
             self.time += self.dt
+
+    def copy_dataframe(self):
+        self.dataframe.to_clipboard(index=False)
 
 
 # initializes all the values
@@ -134,7 +162,6 @@ def initialize():
     return Rocket(drag_setup, motor, dry_mass_rocket, initial_height_msl=initial_height_msl)
 
 
-#%%
 if __name__ == '__main__':
     # print("Height", ",", "Velocity", ",", "Acceleration", ",", "Time", ",", "Mass", ",","Drag Force")
     # %% Generate rocket
@@ -148,7 +175,7 @@ if __name__ == '__main__':
         # Convert asl to agl
         rocket.update_agl()
 
-        rocket.dataframe_update()
+        rocket.datalist_update()
 
         # output the values with space between them
         # Done: setup csv file export using pandas (ask ChatGPT about it)
@@ -161,6 +188,8 @@ if __name__ == '__main__':
         #      rocket.drag_setup.calculate_drag_force(rocket.velocity, rocket.height_agl))
 
         rocket.time += rocket.dt
+    rocket.dataframe_update()
     # %%
     print(rocket.dataframe)
-    rocket.dataframe.to_csv("Simulation_data.csv")
+    rocket.copy_dataframe()
+    rocket.dataframe.to_csv("Simulation_data.csv", index=False)
