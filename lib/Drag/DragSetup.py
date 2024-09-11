@@ -37,10 +37,10 @@ class Atmosphere:
     def pressure(self, h):
         """Calculate the pressure at a given altitude h."""
         if h >= self.U:
-            return (self.p_0 * (1 - (self.L * h / self.temp_0)) ** ((self.g * self.M) / (self.L * self.R))
+            return (self.p_0 * (1 - (self.L * (h - self.h_0) / self.temp_0)) ** ((self.g * self.M) / (self.L * self.R))
                     * exp(-(h - self.U) / self.H_tp))
         else:
-            return self.p_0 * (1 - (self.L * h / self.temp_0)) ** ((self.g * self.M) / (self.L * self.R))
+            return self.p_0 * (1 - (self.L * (h - self.h_0) / self.temp_0)) ** ((self.g * self.M) / (self.L * self.R))
 
     def density(self, h):
         """Calculate the air density at a given altitude h."""
