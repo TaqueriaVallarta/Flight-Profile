@@ -6,6 +6,7 @@ from lib.RocketClass import Rocket
 from math import pi
 from lib.GoogleSheets import UpdateSpreadsheet
 import time
+import os
 
 
 # Self-Explanatory
@@ -59,24 +60,26 @@ def df_column_switch(df, column1, column2):
 
 if __name__ == '__main__':
     # %% Generate rocket
-    update_spreadsheet = UpdateSpreadsheet(initialize())
-    update_spreadsheet.write_to_named_range('simulate', "TRUE")
 
-    # %% Simulate rocket to ground hit
-
-    # %% Export the data
-
-    while True:
-        if update_spreadsheet.sheet_bool('simulate'):
-            update_spreadsheet.write_to_named_range('simulate', "FALSE")
-            if update_spreadsheet.sheet_bool('use_sheet_inputs'):
-                update_spreadsheet.update_values_from_sheets()
-            update_spreadsheet.rocket.simulate_to_ground()
-            update_spreadsheet.update_data()
-            update_spreadsheet.update_named_data()
-            exit()
-        if update_spreadsheet.sheet_bool('stop'):
-            update_spreadsheet.write_to_named_range('stop', "FALSE")
-            exit()
-        time.sleep(2)
-        print(time.process_time())
+    if os.path.exists("credentials1.json") and os.path.exists("credentials2.json"):
+        while True:
+            update_spreadsheet = UpdateSpreadsheet(initialize())
+            update_spreadsheet.write_to_named_range('simulate', "TRUE")
+            if update_spreadsheet.sheet_bool('simulate'):
+                update_spreadsheet.write_to_named_range('simulate', "FALSE")
+                if update_spreadsheet.sheet_bool('use_sheet_inputs'):
+                    update_spreadsheet.update_values_from_sheets()
+                update_spreadsheet.rocket.simulate_to_ground()
+                update_spreadsheet.update_data()
+                update_spreadsheet.update_named_data()
+                exit()
+            if update_spreadsheet.sheet_bool('stop'):
+                update_spreadsheet.write_to_named_range('stop', "FALSE")
+                exit()
+            time.sleep(2)
+            print(time.process_time())
+    else:
+        rocket = initialize()
+        rocket.simulate_to_ground()
+        rocket.dataframe.to_csv("Simulation_data.csv", index=False)
+        rocket.dataframe.to_clipboard(index=False)
