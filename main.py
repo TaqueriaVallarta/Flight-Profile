@@ -1,4 +1,3 @@
-# %%
 from lib.Drag.DragSetup import DragSetup
 from lib.Motor.Motor import Motor
 from lib.Recovery import Parachute
@@ -60,26 +59,7 @@ def df_column_switch(df, column1, column2):
 
 if __name__ == '__main__':
     # %% Generate rocket
+    print("Start:", time.process_time())
+    update_spreadsheet = UpdateSpreadsheet(initialize())
 
-    if os.path.exists("credentials1.json") and os.path.exists("credentials2.json"):
-        while True:
-            update_spreadsheet = UpdateSpreadsheet(initialize())
-            update_spreadsheet.write_to_named_range('simulate', "TRUE")
-            if update_spreadsheet.sheet_bool('simulate'):
-                update_spreadsheet.write_to_named_range('simulate', "FALSE")
-                if update_spreadsheet.sheet_bool('use_sheet_inputs'):
-                    update_spreadsheet.update_values_from_sheets()
-                update_spreadsheet.rocket.simulate_to_ground()
-                update_spreadsheet.update_data()
-                update_spreadsheet.update_named_data()
-                exit()
-            if update_spreadsheet.sheet_bool('stop'):
-                update_spreadsheet.write_to_named_range('stop', "FALSE")
-                exit()
-            time.sleep(2)
-            print(time.process_time())
-    else:
-        rocket = initialize()
-        rocket.simulate_to_ground()
-        rocket.dataframe.to_csv("Simulation_data.csv", index=False)
-        rocket.dataframe.to_clipboard(index=False)
+    update_spreadsheet.process_spreadsheet_update()
