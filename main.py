@@ -5,7 +5,7 @@ from lib.RocketClass import Rocket
 from math import pi
 from lib.GoogleSheets import UpdateSpreadsheet
 import time
-import os
+import logging
 
 
 # Self-Explanatory
@@ -58,8 +58,21 @@ def df_column_switch(df, column1, column2):
 
 
 if __name__ == '__main__':
-    # %% Generate rocket
-    print("Start:", time.process_time())
-    update_spreadsheet = UpdateSpreadsheet(initialize())
+    # Log the start time of the process
+    start_time = time.process_time()
+    logging.info(f"Starting process at {start_time:.2f} seconds")
 
-    update_spreadsheet.process_spreadsheet_update()
+    # Initialize Rocket object
+    rocket = initialize()
+
+    # Initialize spreadsheet updater
+    try:
+        update_spreadsheet = UpdateSpreadsheet(rocket)
+        update_spreadsheet.process_spreadsheet_update()
+    except Exception as e:
+        logging.error(f"Failed to update spreadsheet: {e}")
+
+    # Log the total elapsed process time
+    end_time = time.process_time()
+    elapsed_time = end_time - start_time
+    logging.info(f"Process completed in {elapsed_time:.2f} seconds")

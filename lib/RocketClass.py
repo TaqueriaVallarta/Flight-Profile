@@ -3,7 +3,7 @@ from types import NoneType
 from lib.Drag.DragSetup import DragSetup
 from lib.Motor.Motor import Motor
 from lib.rk4 import rk4_step
-import pandas as pd
+from pandas import DataFrame
 
 
 class Rocket:
@@ -20,13 +20,13 @@ class Rocket:
         self.time = time
         self.dt = dt
         self.data_list = []
-        self.dataframe = pd.DataFrame(
+        self.dataframe = DataFrame(
             columns=['Time', 'Height AGL', 'Height MSL', 'Velocity',
                      'Acceleration',
                      'Mass', 'Thrust', 'Drag', 'Air Density', 'Air Pressure',
                      'Air_Temperature', 'Speed of Sound', 'Drag Coefficient', 'Mach',
                      'Cross-sectional Area', 'Flight State', 'Weight', 'Total Force'])
-        self.dataframe: pd.DataFrame
+        self.dataframe: DataFrame
         self.values = {
             "temp_0": self.drag_setup.atmosphere.temp_0,
             "p_0": self.drag_setup.atmosphere.p_0,
