@@ -252,6 +252,7 @@ class UpdateSpreadsheet:
                 logging.error(f"Error during spreadsheet processing: {e}")
 
             """Main method to handle spreadsheet updates."""
+            self.rocket.simulate_to_ground()
             self.update_data()
             self.update_named_data()
         else:

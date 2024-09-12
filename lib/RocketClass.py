@@ -43,7 +43,8 @@ class Rocket:
             "deployment_altitude": self.drag_setup.main_parachute.deployment_altitude,
             "wet_mass_motor": self.motor.wet_mass,
             "burn_time_motor": self.motor.burn_time,
-            "mean_thrust": self.motor.mean_thrust
+            "mean_thrust": self.motor.mean_thrust,
+            "dry_mass": self.dry_mass
         }
 
     def set_vals_to_vars(self):
@@ -64,6 +65,7 @@ class Rocket:
         self.values["wet_mass_motor"] = self.motor.wet_mass
         self.values["burn_time_motor"] = self.motor.burn_time
         self.values["mean_thrust"] = self.motor.mean_thrust
+        self.values["dry_mass"] = self.dry_mass
         return self.values
 
     def set_vars_to_new(self, new_values):
@@ -91,6 +93,7 @@ class Rocket:
         self.motor.wet_mass = new_values.get("wet_mass_motor", self.motor.wet_mass)
         self.motor.burn_time = new_values.get("burn_time_motor", self.motor.burn_time)
         self.motor.mean_thrust = new_values.get("mean_thrust", self.motor.mean_thrust)
+        self.dry_mass = new_values.get("dry_mass", self.dry_mass)
         # Reflect changes in the internal dictionary
         self.values = new_values
 
