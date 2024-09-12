@@ -160,28 +160,15 @@ class UpdateSpreadsheet:
         if not range_names:
             logging.info("No valid named ranges found for fetching.")
             return {}
+        response = self.service.spreadsheets().values().batchGet(
+            spreadsheetId=self.spreadsheet_id, ranges=range_names
+        ).execute()
 
-        try:
-            response = self.service.spreadsheets().values().batchGet(
-                spreadsheetId=self.spreadsheet_id, ranges=range_names
-            ).execute()
-
-            results = {}
-            for value_range in response.get('valueRanges', []):
-                if value_range.get('values'):
-                    value = value_range.get('values', [[]])[0][0]
-                    try:
-                        # Attempt to cast to a float
-                        results[value_range['range'].split('!')[0]] = float(value)
-                    except ValueError:
-                        # Log error if unable to cast to float
-                        logging.error(f"Error converting value to a float: {value}")
-
-            return results
-
-        except Exception as e:
-            logging.error(f"Error fetching batch values: {e}")
-            return {}
+        values = [float(value_range.get('values', [[]])[0][0]) for value_range in response.get('valueRanges', [])]
+        results = {}
+        for i, value in enumerate(values):
+            results.update({range_names[i]: value})
+        self.rocket.set_vars_to_new(results)
 
     def update_sheets_from_values(self):
         """Writes the Rocket's values to the corresponding named ranges in the spreadsheet."""
@@ -242,10 +229,8 @@ class UpdateSpreadsheet:
             logging.info("Updating spreadsheet...")
             try:
                 if self.sheet_bool("use_sheet_inputs"):
-                    updated_values = self.update_values_from_sheets()
-                    for key, value in updated_values.items():
-                        self.rocket.values[key] = value
-                    logging.info("Spreadsheet updated successfully.")
+                    self.update_values_from_sheets()
+                    logging.info("Values updated successfully.")
                 else:
                     logging.info("No input update necessary")
             except Exception as e:

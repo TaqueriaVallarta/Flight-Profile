@@ -7,7 +7,7 @@ class Motor:
     # Uses constant mass flow rate
     def mass(self, time):
         if time <= self.burn_time:
-            return self.wet_mass - (self.wet_mass / self.burn_time) * time
+            return self.wet_mass - ((self.wet_mass / self.burn_time) * time)
         else:
             return 0
 
