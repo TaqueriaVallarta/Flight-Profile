@@ -4,7 +4,8 @@ from lib.Motor.Motor import Motor
 from lib.Recovery import Parachute
 from lib.RocketClass import Rocket
 from math import pi
-import matplotlib.pyplot as plt
+from lib.GoogleSheets import UpdateSpreadsheet
+import time
 
 
 # Self-Explanatory
@@ -48,13 +49,34 @@ def initialize():
     return Rocket(drag_setup, motor, dry_mass_rocket, initial_height_msl=initial_height_msl)
 
 
+def df_column_switch(df, column1, column2):
+    i = list(df.columns)
+    a, b = i.index(column1), i.index(column2)
+    i[b], i[a] = i[a], i[b]
+    df = df[i]
+    return df
+
+
 if __name__ == '__main__':
     # %% Generate rocket
-    rocket = initialize()
+    update_spreadsheet = UpdateSpreadsheet(initialize())
+    update_spreadsheet.write_to_named_range('simulate', "TRUE")
 
     # %% Simulate rocket to ground hit
-    rocket.simulate_to_ground()
 
     # %% Export the data
-    rocket.copy_dataframe()
-    rocket.dataframe.to_csv("Simulation_data.csv", index=False)
+
+    while True:
+        if update_spreadsheet.sheet_bool('simulate'):
+            update_spreadsheet.write_to_named_range('simulate', "FALSE")
+            if update_spreadsheet.sheet_bool('use_sheet_inputs'):
+                update_spreadsheet.update_values_from_sheets()
+            update_spreadsheet.rocket.simulate_to_ground()
+            update_spreadsheet.update_data()
+            update_spreadsheet.update_named_data()
+            exit()
+        if update_spreadsheet.sheet_bool('stop'):
+            update_spreadsheet.write_to_named_range('stop', "FALSE")
+            exit()
+        time.sleep(2)
+        print(time.process_time())

@@ -1,3 +1,6 @@
 /.idea/
 /env/
 /__pycache__/
+/credentials1.json
+/credentials2.json
+/vault-config.hcl
