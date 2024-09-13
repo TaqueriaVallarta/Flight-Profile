@@ -170,9 +170,9 @@ class UpdateSpreadsheet:
         results = {}
         for i, value in enumerate(values):
             results.update({range_names[i]: value})
+        self.rocket.set_vars_to_new(results)
         with open('values.json', 'w') as fp:
             json.dump(results, fp, indent=4)
-        self.rocket.set_vars_to_new(results)
 
     def update_sheets_from_values(self):
         """Writes the Rocket's values to the corresponding named ranges in the spreadsheet."""
@@ -233,9 +233,7 @@ class UpdateSpreadsheet:
         if not os.path.exists("credentials1.json"):
             # If credentials are missing, run simulation locally and export data
             logging.warning("Credentials missing. Running simulation locally.")
-            with open('values.json', 'rb') as fp:
-                values = json.load(fp)
-            self.rocket.set_vars_to_new(values)
+            self.rocket.get_values_from_files()
             self.rocket.simulate_to_ground()
             self.rocket.dataframe.to_csv("Simulation_data.csv", index=False)
             self.rocket.dataframe.to_clipboard(index=False)

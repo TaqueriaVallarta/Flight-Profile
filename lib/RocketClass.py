@@ -4,7 +4,7 @@ from lib.Drag.DragSetup import DragSetup
 from lib.Motor.Motor import Motor
 from lib.rk4 import rk4_step
 from pandas import DataFrame
-
+import json
 
 class Rocket:
     def __init__(self, drag_setup: DragSetup, motor: Motor, dry_mass, time=0,
@@ -210,3 +210,8 @@ class Rocket:
 
             self.time += self.dt
         self.dataframe_update()
+
+    def get_values_from_files(self):
+        with open('values.json', 'rb') as fp:
+            values = json.load(fp)
+        self.set_vars_to_new(values)
