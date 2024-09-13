@@ -68,7 +68,7 @@ if __name__ == '__main__':
     # Initialize spreadsheet updater
     try:
         update_spreadsheet = UpdateSpreadsheet(rocket)
-        update_spreadsheet.process_spreadsheet_update()
+        update_spreadsheet.process_spreadsheet_update(start_time=start_time)
     except Exception as e:
         logging.error(f"Failed to update spreadsheet: {e}")
 

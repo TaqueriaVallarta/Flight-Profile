@@ -1,3 +1,4 @@
+import time
 from re import sub
 from gspread import authorize
 from google.oauth2.service_account import Credentials
@@ -5,6 +6,7 @@ from googleapiclient.discovery import build
 from lib.RocketClass import Rocket
 import logging
 import os
+import json
 
 logging.basicConfig(level=logging.INFO)
 
@@ -168,6 +170,8 @@ class UpdateSpreadsheet:
         results = {}
         for i, value in enumerate(values):
             results.update({range_names[i]: value})
+        with open('values.json', 'w') as fp:
+            json.dump(results, fp, indent=4)
         self.rocket.set_vars_to_new(results)
 
     def update_sheets_from_values(self):
@@ -224,26 +228,47 @@ class UpdateSpreadsheet:
         else:
             return None
 
-    def process_spreadsheet_update(self):
-        if os.path.exists("credentials1.json"):
-            logging.info("Updating spreadsheet...")
-            try:
-                if self.sheet_bool("use_sheet_inputs"):
-                    self.update_values_from_sheets()
-                    logging.info("Values updated successfully.")
-                else:
-                    logging.info("No input update necessary")
-            except Exception as e:
-                logging.error(f"Error during spreadsheet processing: {e}")
-
-            """Main method to handle spreadsheet updates."""
+    def process_spreadsheet_update(self, start_time=0):
+        # Check if the credentials file exists before proceeding
+        if not os.path.exists("credentials1.json"):
+            # If credentials are missing, run simulation locally and export data
+            logging.warning("Credentials missing. Running simulation locally.")
+            with open('values.json', 'rb') as fp:
+                values = json.load(fp)
+            self.rocket.set_vars_to_new(values)
             self.rocket.simulate_to_ground()
-            self.update_data()
-            self.update_named_data()
-        else:
-            # If credentials files are missing, perform local simulation and export data
-            print("Credentials missing. Running simulation locally.")
-            rocket = self.rocket
-            rocket.simulate_to_ground()
-            rocket.dataframe.to_csv("Simulation_data.csv", index=False)
-            rocket.dataframe.to_clipboard(index=False)
+            self.rocket.dataframe.to_csv("Simulation_data.csv", index=False)
+            self.rocket.dataframe.to_clipboard(index=False)
+            return  # Exit the function early since there's no need to proceed further
+
+        logging.info(f"Spreadsheet update began after {(time.process_time() - start_time):.3f} seconds")
+        start_time = time.process_time()
+
+        # Handle spreadsheet inputs if necessary
+        try:
+            if self.sheet_bool("use_sheet_inputs"):
+                self.update_values_from_sheets()
+                elapsed_time = time.process_time() - start_time
+                logging.info(f"Rocket values updated successfully in {elapsed_time:.3f} seconds")
+            else:
+                logging.info("No input update necessary")
+        except Exception as e:
+            logging.error(f"Error during spreadsheet processing: {e}")
+
+        # Perform rocket simulation
+        start_time = time.process_time()
+        self.rocket.simulate_to_ground()
+        elapsed_time = time.process_time() - start_time
+        logging.info(f"Rocket simulation completed in {elapsed_time:.3f} seconds")
+
+        # Update data
+        start_time = time.process_time()
+        self.update_data()
+        elapsed_time = time.process_time() - start_time
+        logging.info(f"Data send completed in {elapsed_time:.3f} seconds")
+
+        # Update named ranges
+        start_time = time.process_time()
+        self.update_named_data()
+        elapsed_time = time.process_time() - start_time
+        logging.info(f"Named range update completed in {elapsed_time:.3f} seconds")

@@ -68,7 +68,7 @@ class Rocket:
         self.values["dry_mass"] = self.dry_mass
         return self.values
 
-    def set_vars_to_new(self, new_values):
+    def set_vars_to_new(self, new_values: dict):
         # Update the values in both directions
         self.drag_setup.atmosphere.temp_0 = new_values.get("temp_0", self.drag_setup.atmosphere.temp_0)
         self.drag_setup.atmosphere.p_0 = new_values.get("p_0", self.drag_setup.atmosphere.p_0)
