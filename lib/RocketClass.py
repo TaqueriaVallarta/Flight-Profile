@@ -97,6 +97,8 @@ class Rocket:
         # Reflect changes in the internal dictionary
         self.values = new_values
 
+    
+
     def mass(self, time):
         return self.dry_mass + self.motor.mass(time)
 
