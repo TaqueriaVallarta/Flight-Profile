@@ -17,7 +17,7 @@ def initialize():
     # todo: make initialize values somewhat realistic
     fin_thickness = inches_to_meters(.5)
     fin_height = inches_to_meters(12)
-    drag_coef = .5
+    drag_coef = 0.5
 
     cross_area_reefed = pi * (.5 / 2) ** 2  # area in m^2
     drag_coef_reefed = 2
