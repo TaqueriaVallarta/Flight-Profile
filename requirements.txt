@@ -4,3 +4,4 @@ pandas~=2.0.3
 gspread~=6.1.2
 google-api-python-client~=2.145.0
 protobuf~=4.24.1
+gspread
