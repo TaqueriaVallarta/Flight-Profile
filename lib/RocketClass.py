@@ -8,7 +8,7 @@ import pandas as pd
 
 class Rocket:
     def __init__(self, drag_setup: DragSetup, motor: Motor, dry_mass, time=0, dt=.1,
-                 initial_height_msl=0.0):
+                 initial_height_msl=0.0,):
         self.drag_setup = drag_setup  # drag setup class
         self.motor = motor  # motor class
         self.dry_mass = dry_mass  # dry mass in kg
@@ -27,6 +27,8 @@ class Rocket:
                      'Air_Temperature', 'Speed of Sound', 'Drag Coefficient', 'Mach',
                      'Cross-sectional Area', 'Flight State', 'Weight', 'Total Force'])
         self.dataframe: pd.DataFrame
+
+    
 
     def mass(self, time):
         return self.dry_mass + self.motor.mass(time)
