@@ -1,10 +1,9 @@
-from types import NoneType
-
 from lib.Drag.DragSetup import DragSetup
 from lib.Motor.Motor import Motor
 from lib.rk4 import rk4_step
-from pandas import DataFrame
+from pandas import DataFrame, concat
 import json
+
 
 class Rocket:
     def __init__(self, drag_setup: DragSetup, motor: Motor, dry_mass, time=0,
@@ -12,7 +11,7 @@ class Rocket:
         self.drag_setup = drag_setup  # drag setup class
         self.motor = motor  # motor class
         self.dry_mass = dry_mass  # dry mass in kg
-        self.initial_height_asl = initial_height_msl  # Initial Height in m ASL
+        self.initial_height_msl = initial_height_msl  # Initial Height in m msl
         self.height_agl = 0  # height above ground level
         self.height_msl = initial_height_msl  # height above ground level
         self.velocity = 0
@@ -33,6 +32,7 @@ class Rocket:
             "h_0": self.drag_setup.atmosphere.h_0,
             "body_diameter": self.drag_setup.body_diameter,
             "fin_thickness": self.drag_setup.fin_thickness,
+            "fin_height": self.drag_setup.fin_height,
             "drag_coef": self.drag_setup.drag_coef,
             "cross_area_reefed": self.drag_setup.reefed_parachute.surface_area,
             "drag_coef_reefed": self.drag_setup.reefed_parachute.drag_coefficient,
@@ -43,7 +43,7 @@ class Rocket:
             "deployment_altitude": self.drag_setup.main_parachute.deployment_altitude,
             "wet_mass_motor": self.motor.wet_mass,
             "burn_time_motor": self.motor.burn_time,
-            "mean_thrust": self.motor.mean_thrust,
+            "impulse": self.motor.impulse,
             "dry_mass": self.dry_mass
         }
 
@@ -54,6 +54,7 @@ class Rocket:
         self.values["h_0"] = self.drag_setup.atmosphere.h_0
         self.values["body_diameter"] = self.drag_setup.body_diameter
         self.values["fin_thickness"] = self.drag_setup.fin_thickness
+        self.values["fin_height"] = self.drag_setup.fin_height
         self.values["drag_coef"] = self.drag_setup.drag_coef
         self.values["cross_area_reefed"] = self.drag_setup.reefed_parachute.surface_area
         self.values["drag_coef_reefed"] = self.drag_setup.reefed_parachute.drag_coefficient
@@ -64,7 +65,7 @@ class Rocket:
         self.values["deployment_altitude"] = self.drag_setup.main_parachute.deployment_altitude
         self.values["wet_mass_motor"] = self.motor.wet_mass
         self.values["burn_time_motor"] = self.motor.burn_time
-        self.values["mean_thrust"] = self.motor.mean_thrust
+        self.values["impulse"] = self.motor.impulse
         self.values["dry_mass"] = self.dry_mass
         return self.values
 
@@ -75,6 +76,7 @@ class Rocket:
         self.drag_setup.atmosphere.h_0 = new_values.get("h_0", self.drag_setup.atmosphere.h_0)
         self.drag_setup.body_diameter = new_values.get("body_diameter", self.drag_setup.body_diameter)
         self.drag_setup.fin_thickness = new_values.get("fin_thickness", self.drag_setup.fin_thickness)
+        self.drag_setup.fin_height = new_values.get("fin_height", self.drag_setup.fin_height)
         self.drag_setup.drag_coef = new_values.get("drag_coef", self.drag_setup.drag_coef)
         self.drag_setup.reefed_parachute.surface_area = new_values.get("cross_area_reefed",
                                                                        self.drag_setup.reefed_parachute.surface_area)
@@ -92,7 +94,7 @@ class Rocket:
                                                                         self.drag_setup.main_parachute.deployment_altitude)
         self.motor.wet_mass = new_values.get("wet_mass_motor", self.motor.wet_mass)
         self.motor.burn_time = new_values.get("burn_time_motor", self.motor.burn_time)
-        self.motor.mean_thrust = new_values.get("mean_thrust", self.motor.mean_thrust)
+        self.motor.impulse = new_values.get("impulse", self.motor.impulse)
         self.dry_mass = new_values.get("dry_mass", self.dry_mass)
         # Reflect changes in the internal dictionary
         self.values = new_values
@@ -102,11 +104,11 @@ class Rocket:
     def mass(self, time):
         return self.dry_mass + self.motor.mass(time)
 
-    def acceleration(self, height_asl, velocity, time):
-        drag, self.dt = self.drag_setup.calculate_drag_force(velocity, height_asl, self.time)
+    def acceleration(self, height_msl, velocity, time):
+        drag, self.dt = self.drag_setup.calculate_drag_force(velocity, height_msl, self.time)
         thrust = self.motor.thrust(time)
         weight = -self.gravity * self.mass(time)
-        if self.height_msl < self.initial_height_asl:
+        if self.height_msl < self.initial_height_msl:
             normal_force = -weight
         else:
             normal_force = 0
@@ -118,7 +120,7 @@ class Rocket:
         self.height_msl, self.velocity = rk4_step(self.height_msl, self.velocity, self.acceleration, self.dt, self.time)
 
     def update_agl(self):
-        self.height_agl = self.height_msl - self.initial_height_asl
+        self.height_agl = self.height_msl - self.initial_height_msl
 
     def mach(self):
         return abs(self.velocity / self.drag_setup.atmosphere.speed_of_sound(self.height_msl))
@@ -170,20 +172,17 @@ class Rocket:
         self.data_list.append(data)
 
     def dataframe_update(self):
-        columns = self.dataframe.columns
-        for i, column in enumerate(columns):
-            series = []
-            for j in range(len(self.data_list)):
-                series.append(self.data_list[j][i])
-            self.dataframe[column] = series
+        new_data = DataFrame(self.data_list, columns=self.dataframe.columns)
+        self.dataframe = concat([self.dataframe, new_data], ignore_index=True)
         self.dataframe['Events'] = self.events()
-        self.dataframe = self.dataframe.astype({'Time': float, 'Thrust': float, 'Flight State': str, 'Events': str})
+        self.dataframe = self.dataframe.astype({
+            'Time': float, 'Thrust': float, 'Flight State': str, 'Events': str
+        })
 
     def sim_to_apogee(self):
         while self.velocity >= 0:
             self.rkt_rk4_step()
             self.update_agl()
-
             self.time += self.dt
 
     def copy_dataframe(self):
@@ -195,21 +194,10 @@ class Rocket:
 
             # Update height + velocity using the rk4
             self.rkt_rk4_step()
-            # Convert asl to agl
+            # Convert msl to agl
             self.update_agl()
 
             self.datalist_update()
-
-            # output the values with space between them
-            # Done: setup csv file export using pandas (ask ChatGPT about it)
-            # numpy is good for making the arrays
-            # TODO: decide between MatPlotLib and Sheets/Excel for presentation of data
-
-            # print(rocket.height_agl, ",", rocket.velocity, ",",
-            #      rocket.acceleration(rocket.height_agl, rocket.velocity, current_time), ",",
-            #      current_time, ",", rocket.mass(current_time), ",",
-            #      rocket.drag_setup.calculate_drag_force(rocket.velocity, rocket.height_agl))
-
             self.time += self.dt
         self.dataframe_update()
 

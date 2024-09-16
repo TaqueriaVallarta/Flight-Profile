@@ -1,6 +1,6 @@
 from lib.Drag.DragSetup import DragSetup
 from lib.Motor.Motor import Motor
-from lib.Recovery import Parachute
+from lib.Drag.Recovery import Parachute
 from lib.RocketClass import Rocket
 from math import pi
 from lib.GoogleSheets import UpdateSpreadsheet
@@ -15,10 +15,10 @@ def inches_to_meters(inches):
 
 # initializes all the values for rocket
 def initialize():
-    # todo: make initialize values somewhat realistic
-    fin_thickness = inches_to_meters(.5)
-    fin_height = inches_to_meters(12)
-    drag_coef = 0.5
+    # Define realistic values
+    fin_thickness = inches_to_meters(0.5)  # thickness of fins
+    fin_height = inches_to_meters(12)  # height of fins
+    drag_coef = 0.5  # drag coefficient
 
     cross_area_reefed = pi * (.5 / 2) ** 2  # area in m^2
     drag_coef_reefed = 2

@@ -1,5 +1,5 @@
 from math import pi, exp, sqrt, copysign
-from lib.Recovery import Parachute
+from lib.Drag.Recovery import Parachute
 
 
 # TODO: setup drag reduction due to exhaust plume
