@@ -3,3 +3,4 @@
 /__pycache__/
 /credentials1.json
 /credentials2.json
+/pycache/*
