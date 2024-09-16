@@ -1,6 +1,5 @@
 /.idea/
 /env/
-/__pycache__/
+**/__pycache__/  
 /credentials1.json
 /credentials2.json
-/pycache/*
