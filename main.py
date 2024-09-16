@@ -1,10 +1,11 @@
-# %%
 from lib.Drag.DragSetup import DragSetup
 from lib.Motor.Motor import Motor
 from lib.Recovery import Parachute
 from lib.RocketClass import Rocket
 from math import pi
-import matplotlib.pyplot as plt
+from lib.GoogleSheets import UpdateSpreadsheet
+import time
+import logging
 
 
 # Self-Explanatory
@@ -48,13 +49,30 @@ def initialize():
     return Rocket(drag_setup, motor, dry_mass_rocket, initial_height_msl=initial_height_msl)
 
 
+def df_column_switch(df, column1, column2):
+    i = list(df.columns)
+    a, b = i.index(column1), i.index(column2)
+    i[b], i[a] = i[a], i[b]
+    df = df[i]
+    return df
+
+
 if __name__ == '__main__':
-    # %% Generate rocket
+    # Log the start time of the process
+    start_time = time.process_time()
+    logging.info(f"Starting process at {start_time:.2f} seconds")
+
+    # Initialize Rocket object
     rocket = initialize()
 
-    # %% Simulate rocket to ground hit
-    rocket.simulate_to_ground()
+    # Initialize spreadsheet updater
+    try:
+        update_spreadsheet = UpdateSpreadsheet(rocket)
+        update_spreadsheet.process_spreadsheet_update(start_time=start_time)
+    except Exception as e:
+        logging.error(f"Failed to update spreadsheet: {e}")
 
-    # %% Export the data
-    rocket.copy_dataframe()
-    rocket.dataframe.to_csv("Simulation_data.csv", index=False)
+    # Log the total elapsed process time
+    end_time = time.process_time()
+    elapsed_time = end_time - start_time
+    logging.info(f"Process completed in {elapsed_time:.2f} seconds")
