@@ -2,7 +2,6 @@ from math import pi, exp, sqrt, copysign
 from lib.Recovery import Parachute
 
 
-
 # TODO: setup drag reduction due to exhaust plume
 def base_cross_area(body_diameter, fin_thickness, fin_height):
     return (pi * (body_diameter / 2) ** 2) + 3 * fin_height * fin_thickness
@@ -69,19 +68,21 @@ class DragSetup:
 
     def calculate_drag_force(self, velocity, altitude, time):
         """Calculate the drag force at a given velocity and altitude."""
+        recommended_dt = .1
         if velocity < 0:
             if (altitude - self.atmosphere.h_0) <= self.main_parachute.deployment_altitude:
                 if not self.main_parachute.DeployStatus:
                     self.main_parachute.DeployStatus = True
                     self.main_parachute.DeployTime = time
-                self.cross_area = self.main_parachute.cross_area(time)
+                self.cross_area, recommended_dt = self.main_parachute.cross_area(time)
                 self.drag_coef = self.main_parachute.drag_coefficient
             else:
                 if not self.reefed_parachute.DeployStatus:
                     self.reefed_parachute.DeployStatus = True
                     self.reefed_parachute.DeployTime = time
-                self.cross_area = self.reefed_parachute.cross_area(time)
+                self.cross_area, recommended_dt = self.reefed_parachute.cross_area(time)
                 self.drag_coef = self.main_parachute.drag_coefficient
 
         air_density = self.atmosphere.density(altitude)
-        return drag_force(self.cross_area, air_density, self.drag_coef, velocity) * copysign(1, -velocity)
+        return (drag_force(self.cross_area, air_density, self.drag_coef, velocity) * copysign(1, -velocity),
+                recommended_dt)
