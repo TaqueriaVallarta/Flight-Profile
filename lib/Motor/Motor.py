@@ -9,15 +9,15 @@ class Motor:
         self.g0 = 9.81  # Gravity (m/s^2)
         self.Isp = Isp  # Specific Impulse
         self.Veq = self.g0 * self.Isp  # Equivalent Velocity
-        self.rho_ox = 720  # Density of Nitrous (kg/m^3)
+        self.rho_ox = 772.5  # Density of Nitrous (kg/m^3)
         self.rho_f = 940  # Density of HTPB (kg/m^3)
         self.dry_mass_rkt = dry_mass_rkt  # Dry Mass of Rocket in kg
         self.VF = vf  # Volumetric Loading Factor typical values in sutton (.8-.95)
         self.burn_time = burn_time
         self.OF = OF  # Oxidizer to Fuel ratio
         self.outer_grain_radius = (7.25 / 2) * (2.54 / 100)  # Outer grain radius (m)
-        self.final_thickness = (.25)*2.54/100 # Final grain thickness (m)
-        self.final_grain_radius = self.outer_grain_radius  # Final Grain Radius after burn (m)
+        self.final_thickness = .25*2.54/100 # Final grain thickness (m)
+        self.final_grain_radius = self.outer_grain_radius - self.final_thickness  # Final Grain Radius after burn (m)
         self.n = 0.346  # Coefficient for regression rate
         self.a0 = .417 / (10 ** (self.n + 3))
 
@@ -102,6 +102,7 @@ class Motor:
     # This function is so that everything can just be resolvedd after updating the values ratehr than reinitializing the class
     def update_self(self):
         # Calculate parameters that depend on acceleration
+        self.final_grain_radius = self.outer_grain_radius - self.final_thickness
         self.acceleration, self.latex_equation, self.equation = self.solve_for_acceleration()
 
         # Values based on the calculated acceleration
@@ -144,6 +145,7 @@ class Motor:
         # Inert Mass Fraction
         self.f_inert = self.dry_mass_rkt / self.wet_mass
 
+
     def initial_output(self):
         # Check if acceleration is within limits (considering self.accel is an array)
         accel_status = "within limits" if (
@@ -177,6 +179,7 @@ class Motor:
         logging.info(f"Total impulse: {self.total_impulse:.2f} Ns")
         logging.info(f"Equivalent Injector Area: {self.A0*100*2:.2f} cm^2")
         logging.info(f"Initial grain radius: {initial_grain_radius_inch:.2f} inches")
+        logging.info(f"Final grain radius: {self.final_grain_radius*100/2.54:.2f} inches")
         logging.info(f"Fuel mass: {self.mass_fuel:.2f} kg ({fuel_mass_lb:.2f} lbs)")
         logging.info(f"Oxidizer mass: {self.mass_ox:.2f} kg ({ox_mass_lb:.2f} lbs)")
         logging.info(f"Extra HTPB mass: {self.mass_extra_htpb:.2f} kg ({extra_htpb_mass_lb:.2f} lbs)")

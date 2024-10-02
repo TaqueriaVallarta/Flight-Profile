@@ -47,7 +47,7 @@ class Rocket:
             "Isp": self.motor.Isp,
             "burn_time": self.motor.burn_time,
             "outer_grain_radius": self.motor.outer_grain_radius,
-            "final_grain_radius": self.motor.final_grain_radius,
+            "final_thickness": self.motor.final_thickness,
             "volumetric_loading": self.motor.VF
         }
 
@@ -71,7 +71,7 @@ class Rocket:
         self.values["Isp"] = self.motor.Isp
         self.values["burn_time"] = self.motor.burn_time
         self.values["outer_grain_radius"] = self.motor.outer_grain_radius
-        self.values["final_grain_radius"] = self.motor.final_grain_radius
+        self.values["final_thickness"] = self.motor.final_thickness
         self.values["volumetric_loading"] = self.motor.VF
         self.motor.dry_mass_rkt = self.dry_mass
         self.motor.update_self()
@@ -106,7 +106,7 @@ class Rocket:
         self.burn_time = new_values.get("burn_time", self.burn_time)
         self.motor.burn_time = self.burn_time
         self.motor.outer_grain_radius = new_values.get("outer_grain_radius", self.motor.outer_grain_radius)
-        self.motor.final_grain_radius = new_values.get("final_grain_radius", self.motor.final_grain_radius)
+        self.motor.final_thickness = new_values.get("final_thickness", self.motor.final_thickness)
         self.motor.VF = new_values.get("volumetric_loading", self.motor.VF)
         self.motor.dry_mass_rkt = self.dry_mass
         self.motor.update_self()

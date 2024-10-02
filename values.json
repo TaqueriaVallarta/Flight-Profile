@@ -13,10 +13,10 @@
     "drag_coef_main": 2.0,
     "inflation_time_main": 5.0,
     "deployment_altitude": 600.0,
-    "dry_mass": 40,
+    "dry_mass": 43.0,
     "Isp": 200.0,
-    "burn_time": 24,
+    "burn_time": 20.0,
     "outer_grain_radius": 0.092075,
-    "final_grain_radius": 0.079375,
-    "volumetric_loading": 0.95
+    "final_thickness": 0.00635,
+    "volumetric_loading": 0.9
 }
