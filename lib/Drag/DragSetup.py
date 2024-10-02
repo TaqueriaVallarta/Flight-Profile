@@ -66,11 +66,11 @@ class DragSetup:
         self.reefed_parachute = reefed_parachute
         self.main_parachute = main_parachute
 
-    def calculate_drag_force(self, velocity, altitude, time):
+    def calculate_drag_force(self, velocity, height, time):
         """Calculate the drag force at a given velocity and altitude."""
         recommended_dt = .1
         if velocity < 0:
-            if (altitude - self.atmosphere.h_0) <= self.main_parachute.deployment_altitude:
+            if (height - self.atmosphere.h_0) <= self.main_parachute.deployment_altitude:
                 if not self.main_parachute.DeployStatus:
                     self.main_parachute.DeployStatus = True
                     self.main_parachute.DeployTime = time
@@ -83,6 +83,6 @@ class DragSetup:
                 self.cross_area, recommended_dt = self.reefed_parachute.cross_area(time)
                 self.drag_coef = self.main_parachute.drag_coefficient
 
-        air_density = self.atmosphere.density(altitude)
+        air_density = self.atmosphere.density(height)
         return (drag_force(self.cross_area, air_density, self.drag_coef, velocity) * copysign(1, -velocity),
                 recommended_dt)

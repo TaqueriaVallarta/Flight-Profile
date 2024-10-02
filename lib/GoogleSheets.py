@@ -243,15 +243,19 @@ class UpdateSpreadsheet:
         start_time = time.process_time()
 
         # Handle spreadsheet inputs if necessary
-        try:
-            if self.sheet_bool("use_sheet_inputs"):
-                self.update_values_from_sheets()
-                elapsed_time = time.process_time() - start_time
-                logging.info(f"Rocket values updated successfully in {elapsed_time:.3f} seconds")
-            else:
-                logging.info("No input update necessary")
-        except Exception as e:
-            logging.error(f"Error during spreadsheet processing: {e}")
+        if self.sheet_bool("use_sheet_inputs"):
+            self.update_values_from_sheets()
+            elapsed_time = time.process_time() - start_time
+            logging.info(f"Rocket values updated successfully in {elapsed_time:.3f} seconds")
+        else:
+            self.rocket.get_values_from_files()
+            logging.info("Using Cached Values")
+            # Perform rocket simulation
+            start_time = time.process_time()
+            self.rocket.simulate_to_ground()
+            elapsed_time = time.process_time() - start_time
+            logging.info(f"Rocket simulation completed in {elapsed_time:.3f} seconds")
+            return
 
         # Perform rocket simulation
         start_time = time.process_time()

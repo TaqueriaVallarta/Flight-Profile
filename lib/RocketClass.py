@@ -7,10 +7,11 @@ from pandas import DataFrame
 import json
 
 class Rocket:
-    def __init__(self, drag_setup: DragSetup, motor: Motor, dry_mass, time=0,
+    def __init__(self, drag_setup: DragSetup, dry_mass, time=0,
                  dt=.1, initial_height_msl=0.0):
+        self.burn_time = 27
         self.drag_setup = drag_setup  # drag setup class
-        self.motor = motor  # motor class
+        self.motor = Motor(dry_mass, self.burn_time, 200)  # motor class
         self.dry_mass = dry_mass  # dry mass in kg
         self.initial_height_asl = initial_height_msl  # Initial Height in m ASL
         self.height_agl = 0  # height above ground level
@@ -33,6 +34,7 @@ class Rocket:
             "h_0": self.drag_setup.atmosphere.h_0,
             "body_diameter": self.drag_setup.body_diameter,
             "fin_thickness": self.drag_setup.fin_thickness,
+            "fin_height": self.drag_setup.fin_height,
             "drag_coef": self.drag_setup.drag_coef,
             "cross_area_reefed": self.drag_setup.reefed_parachute.surface_area,
             "drag_coef_reefed": self.drag_setup.reefed_parachute.drag_coefficient,
@@ -41,10 +43,12 @@ class Rocket:
             "drag_coef_main": self.drag_setup.main_parachute.drag_coefficient,
             "inflation_time_main": self.drag_setup.main_parachute.inflation_time,
             "deployment_altitude": self.drag_setup.main_parachute.deployment_altitude,
-            "wet_mass_motor": self.motor.wet_mass,
-            "burn_time_motor": self.motor.burn_time,
-            "mean_thrust": self.motor.mean_thrust,
-            "dry_mass": self.dry_mass
+            "dry_mass": self.dry_mass,
+            "Isp": self.motor.Isp,
+            "burn_time": self.motor.burn_time,
+            "outer_grain_radius": self.motor.outer_grain_radius,
+            "final_grain_radius": self.motor.final_grain_radius,
+            "volumetric_loading": self.motor.VF
         }
 
     def set_vals_to_vars(self):
@@ -54,6 +58,7 @@ class Rocket:
         self.values["h_0"] = self.drag_setup.atmosphere.h_0
         self.values["body_diameter"] = self.drag_setup.body_diameter
         self.values["fin_thickness"] = self.drag_setup.fin_thickness
+        self.values["fin_height"] = self.drag_setup.fin_height
         self.values["drag_coef"] = self.drag_setup.drag_coef
         self.values["cross_area_reefed"] = self.drag_setup.reefed_parachute.surface_area
         self.values["drag_coef_reefed"] = self.drag_setup.reefed_parachute.drag_coefficient
@@ -62,10 +67,15 @@ class Rocket:
         self.values["drag_coef_main"] = self.drag_setup.main_parachute.drag_coefficient
         self.values["inflation_time_main"] = self.drag_setup.main_parachute.inflation_time
         self.values["deployment_altitude"] = self.drag_setup.main_parachute.deployment_altitude
-        self.values["wet_mass_motor"] = self.motor.wet_mass
-        self.values["burn_time_motor"] = self.motor.burn_time
-        self.values["mean_thrust"] = self.motor.mean_thrust
         self.values["dry_mass"] = self.dry_mass
+        self.values["Isp"] = self.motor.Isp
+        self.values["burn_time"] = self.motor.burn_time
+        self.values["outer_grain_radius"] = self.motor.outer_grain_radius
+        self.values["final_grain_radius"] = self.motor.final_grain_radius
+        self.values["volumetric_loading"] = self.motor.VF
+        self.motor.dry_mass_rkt = self.dry_mass
+        self.motor.update_self()
+        self.drag_setup.main_parachute.start_surface_area = self.drag_setup.reefed_parachute.surface_area
         return self.values
 
     def set_vars_to_new(self, new_values: dict):
@@ -75,6 +85,7 @@ class Rocket:
         self.drag_setup.atmosphere.h_0 = new_values.get("h_0", self.drag_setup.atmosphere.h_0)
         self.drag_setup.body_diameter = new_values.get("body_diameter", self.drag_setup.body_diameter)
         self.drag_setup.fin_thickness = new_values.get("fin_thickness", self.drag_setup.fin_thickness)
+        self.drag_setup.fin_height = new_values.get("fin_height", self.drag_setup.fin_height)
         self.drag_setup.drag_coef = new_values.get("drag_coef", self.drag_setup.drag_coef)
         self.drag_setup.reefed_parachute.surface_area = new_values.get("cross_area_reefed",
                                                                        self.drag_setup.reefed_parachute.surface_area)
@@ -90,17 +101,23 @@ class Rocket:
                                                                        self.drag_setup.main_parachute.inflation_time)
         self.drag_setup.atmosphere.deployment_altitude = new_values.get("deployment_altitude",
                                                                         self.drag_setup.main_parachute.deployment_altitude)
-        self.motor.wet_mass = new_values.get("wet_mass_motor", self.motor.wet_mass)
-        self.motor.burn_time = new_values.get("burn_time_motor", self.motor.burn_time)
-        self.motor.mean_thrust = new_values.get("mean_thrust", self.motor.mean_thrust)
         self.dry_mass = new_values.get("dry_mass", self.dry_mass)
+        self.motor.Isp = new_values.get("Isp", self.motor.Isp)
+        self.burn_time = new_values.get("burn_time", self.burn_time)
+        self.motor.burn_time = self.burn_time
+        self.motor.outer_grain_radius = new_values.get("outer_grain_radius", self.motor.outer_grain_radius)
+        self.motor.final_grain_radius = new_values.get("final_grain_radius", self.motor.final_grain_radius)
+        self.motor.VF = new_values.get("volumetric_loading", self.motor.VF)
+        self.motor.dry_mass_rkt = self.dry_mass
+        self.motor.update_self()
+        self.drag_setup.main_parachute.start_surface_area = self.drag_setup.reefed_parachute.surface_area
         # Reflect changes in the internal dictionary
         self.values = new_values
 
     
 
     def mass(self, time):
-        return self.dry_mass + self.motor.mass(time)
+        return self.motor.mass(time)
 
     def acceleration(self, height_asl, velocity, time):
         drag, self.dt = self.drag_setup.calculate_drag_force(velocity, height_asl, self.time)
@@ -178,6 +195,8 @@ class Rocket:
             self.dataframe[column] = series
         self.dataframe['Events'] = self.events()
         self.dataframe = self.dataframe.astype({'Time': float, 'Thrust': float, 'Flight State': str, 'Events': str})
+        return self.dataframe
+
 
     def sim_to_apogee(self):
         while self.velocity >= 0:
@@ -185,6 +204,7 @@ class Rocket:
             self.update_agl()
 
             self.time += self.dt
+        return self
 
     def copy_dataframe(self):
         self.dataframe.to_clipboard(index=False)

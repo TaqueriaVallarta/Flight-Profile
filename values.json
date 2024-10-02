@@ -4,6 +4,7 @@
     "h_0": 1219.2,
     "body_diameter": 0.2016,
     "fin_thickness": 0.0127,
+    "fin_height": 0.3048,
     "drag_coef": 0.5,
     "cross_area_reefed": 0.5,
     "drag_coef_reefed": 2.0,
@@ -12,8 +13,10 @@
     "drag_coef_main": 2.0,
     "inflation_time_main": 5.0,
     "deployment_altitude": 600.0,
-    "wet_mass_motor": 140.0,
-    "burn_time_motor": 20.0,
-    "mean_thrust": 5000.0,
-    "dry_mass": 70.0
+    "dry_mass": 40,
+    "Isp": 200.0,
+    "burn_time": 24,
+    "outer_grain_radius": 0.092075,
+    "final_grain_radius": 0.079375,
+    "volumetric_loading": 0.95
 }

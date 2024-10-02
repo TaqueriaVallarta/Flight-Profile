@@ -6,6 +6,8 @@ from math import pi
 from lib.GoogleSheets import UpdateSpreadsheet
 import time
 import logging
+import numpy as np
+import matplotlib.pyplot as plt
 
 
 # Self-Explanatory
@@ -14,7 +16,7 @@ def inches_to_meters(inches):
 
 
 # initializes all the values for rocket
-def initialize():
+def initialize(dry_mass_rocket):
     # todo: make initialize values somewhat realistic
     fin_thickness = inches_to_meters(.5)
     fin_height = inches_to_meters(12)
@@ -29,6 +31,7 @@ def initialize():
     drag_coef_main = 2
     inflation_time_main = 5  # time in seconds
     deployment_altitude = 600  # meters
+    intial_surface_area_main = cross_area_reefed
     main_parachute = Parachute(cross_area_main, drag_coef_main, inflation_time_main,
                                deployment_altitude=deployment_altitude)
     main_parachute.start_surface_area = cross_area_reefed
@@ -39,14 +42,8 @@ def initialize():
     drag_setup.atmosphere.h_0 = 1219.2  # Mean height of WSMR ASL in m
     drag_setup.atmosphere.temp_0 = 27 + 273.15  # Mean temp of june (mean of high hand low)
 
-    wet_mass_motor = 210  # Kilograms
-    burn_time = 18  # Seconds
-    mean_thrust = 10000  # Newtons
-    motor = Motor(wet_mass_motor, burn_time, mean_thrust)
-
-    dry_mass_rocket = 1 / 2 * wet_mass_motor  # Kilograms
     initial_height_msl = drag_setup.atmosphere.h_0
-    return Rocket(drag_setup, motor, dry_mass_rocket, initial_height_msl=initial_height_msl)
+    return Rocket(drag_setup, dry_mass_rocket, initial_height_msl=initial_height_msl)
 
 
 def df_column_switch(df, column1, column2):
@@ -63,16 +60,38 @@ if __name__ == '__main__':
     logging.info(f"Starting process at {start_time:.2f} seconds")
 
     # Initialize Rocket object
-    rocket = initialize()
+    rocket = initialize(40)
 
     # Initialize spreadsheet updater
-    try:
-        update_spreadsheet = UpdateSpreadsheet(rocket)
-        update_spreadsheet.process_spreadsheet_update(start_time=start_time)
-    except Exception as e:
-        logging.error(f"Failed to update spreadsheet: {e}")
+    update_spreadsheet = UpdateSpreadsheet(rocket)
+    update_spreadsheet.process_spreadsheet_update(start_time=start_time)
+    update_spreadsheet.rocket.motor.initial_output()
 
     # Log the total elapsed process time
     end_time = time.process_time()
     elapsed_time = end_time - start_time
     logging.info(f"Process completed in {elapsed_time:.2f} seconds")
+
+
+    logging.info(f"Apogee: {max(update_spreadsheet.rocket.dataframe['Height AGL']):.2f} m and {max(update_spreadsheet.rocket.dataframe['Height AGL'])*100/2.56/12:.2f} ft")
+
+    exit()
+
+    rockets = [initialize(i) for i in range(20,50,1)]
+    for rocket in rockets:
+        rocket.sim_to_apogee()
+
+    mass_values = np.linspace(20, 60, 80)
+    apogee_values = [initialize(m).sim_to_apogee().height_agl for m in mass_values]
+
+    plt.plot(mass_values, apogee_values)
+    plt.xlabel('Dry Mass (kg)')
+    plt.ylabel('Apogee (m)')
+    plt.title('Testing Different Dry Masses')
+
+    # Set the axis to start at (0, 0)
+    plt.xlim(np.min(mass_values), np.max(mass_values))
+    plt.ylim(0, max(apogee_values) * 1.1)  # Adding some margin to the max thrust value
+
+    plt.grid(True)
+    plt.show()

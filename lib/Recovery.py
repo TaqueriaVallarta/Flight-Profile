@@ -10,7 +10,7 @@ class Parachute:
 
     def cross_area(self, time):
         if time - self.DeployTime > self.inflation_time:
-            return self.surface_area, 1
+            return self.surface_area, .5
         else:
             return (self.start_surface_area + ((self.surface_area - self.start_surface_area) / self.inflation_time) *
-                    (time - self.DeployTime)), .01
+                    (time - self.DeployTime)), .025
