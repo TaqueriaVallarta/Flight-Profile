@@ -1,11 +1,11 @@
 {
-    "temp_0": 300.15,
-    "p_0": 97866.6421,
-    "h_0": 1219.2,
+    "temp_0": 301.28,
+    "p_0": 74187.0,
+    "h_0": 1358.0,
     "body_diameter": 0.2016,
     "fin_thickness": 0.0127,
     "fin_height": 0.3048,
-    "drag_coef": 0.5,
+    "drag_coef": 0.63,
     "cross_area_reefed": 0.5,
     "drag_coef_reefed": 2.0,
     "inflation_time_reefed": 5.0,
@@ -18,5 +18,5 @@
     "burn_time": 20.0,
     "outer_grain_radius": 0.092075,
     "final_thickness": 0.00635,
-    "volumetric_loading": 0.9
+    "volumetric_loading": 0.875
 }
