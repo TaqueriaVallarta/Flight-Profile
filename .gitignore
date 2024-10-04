@@ -1,5 +1,9 @@
 /.idea/
 /env/
-/__pycache__/
+*/__pycache__/
 /credentials1.json
 /credentials2.json
+.vscode/settings.json
+lib/__pycache__/Recovery.cpython-312.pyc
+lib/Motor/__pycache__/Motor.cpython-312.pyc
+lib/Drag/__pycache__/DragSetup.cpython-312.pyc
