@@ -18,7 +18,7 @@ class Motor:
         self.outer_grain_radius = (7.25 / 2) * (2.54 / 100)  # Outer grain radius (m)
         self.final_thickness = .25*2.54/100 # Final grain thickness (m)
         self.final_grain_radius = self.outer_grain_radius - self.final_thickness  # Final Grain Radius after burn (m)
-        self.n = 0.346  # Coefficient for regression rate
+        self.n = 0.346  # Coefficient for regression r\beg
         self.a0 = .417 / (10 ** (self.n + 3))
 
         # Calculate parameters that depend on acceleration

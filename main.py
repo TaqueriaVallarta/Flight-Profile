@@ -74,7 +74,7 @@ if __name__ == '__main__':
 
 
     logging.info(f"Apogee: {max(update_spreadsheet.rocket.dataframe['Height AGL']):.2f} m and {max(update_spreadsheet.rocket.dataframe['Height AGL'])*100/2.56/12:.2f} ft")
-
+    logging.info(f"Tank size: {update_spreadsheet.rocket.tank_size()}")
     exit()
 
     rockets = [initialize(i) for i in range(20,50,1)]
