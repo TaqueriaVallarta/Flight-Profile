@@ -1,60 +1,86 @@
-from main import initialize, Rocket
 import numpy as np
 import matplotlib.pyplot as plt
-
-# Number of simulations
-num_simulations = 5000
-
-rocket1 = initialize()
-
-
-def plusminus_x_percent(number, x):
-    return number - number * x * .01, number + number * x * .01
+from scipy.optimize import fsolve
+from joblib import Parallel, delayed
+from functools import lru_cache
+import csv
+from main import initialize  # Import the initialize function from main.py
 
 
-# Define parameter variations (mean, standard deviation for normal distribution)
-drag_coef_min, drag_coef_max = plusminus_x_percent(rocket1.drag_setup.drag_coef, 20)
-wet_mass_min, wet_mass_max = plusminus_x_percent(rocket1.motor.wet_mass, 20)
-burn_time_min, burn_time_max = plusminus_x_percent(rocket1.motor.burn_time, 20)
-thrust_min, thrust_max = plusminus_x_percent(rocket1.motor.mean_thrust, 20)
-p_0_min, p_0_max = plusminus_x_percent(rocket1.drag_setup.atmosphere.p_0, 2)
-temp_0_min, temp_0_max = plusminus_x_percent(rocket1.drag_setup.atmosphere.temp_0, 2)
+# Use lru_cache to memoize the eq function
+def eq(variables):
+    rocket = initialize(40).get_values_from_files()
+    burn_time, dry_mass = variables
+    rocket.set_vars_to_new({'dry_mass': dry_mass, 'burn_time': burn_time})
+    apogee, accel = rocket.sim_to_apogee()
+    print(apogee, accel, burn_time, dry_mass)
+    eq1 = apogee - 15240
+    eq2 = 1000 * (accel - 5 * 9.81)
+    return eq1, eq2
 
-# Results storage
-apogees = []
-rockets = []
 
-rocket: Rocket
-for _ in range(num_simulations):
-    rockets.append(initialize())
+# Helper function to solve eq1 = 0 for a given burn_time
+def solve_eq1_for_burn_time(burn_time, dry_mass_guess):
+    root = fsolve(lambda dry_mass: eq((burn_time, dry_mass))[0], dry_mass_guess)
+    return root[0]
 
-for rocket in rockets:
-    # Randomly sample input parameters
-    rocket.drag_setup.drag_coef = np.random.uniform(drag_coef_min, drag_coef_max)
-    rocket.motor.wet_mass = np.random.uniform(wet_mass_min, wet_mass_max)
-    rocket.motor.burn_time = np.random.uniform(burn_time_min, burn_time_max)
-    rocket.motor.mean_thrust = np.random.uniform(thrust_min, thrust_max)
-    rocket.drag_setup.atmosphere.p_0 = np.random.uniform(p_0_min, p_0_max)
-    rocket.drag_setup.atmosphere.temp_0 = np.random.uniform(temp_0_min, temp_0_max)
-    rocket.dry_mass = rocket.motor.wet_mass / 2
 
-    # Recreate classes with random parameters
+# Helper function to solve eq2 = 0 for a given burn_time
+def solve_eq2_for_burn_time(burn_time, dry_mass_guess):
+    root = fsolve(lambda dry_mass: eq((burn_time, dry_mass))[1], dry_mass_guess)
+    return root[0]
 
-    # Simulate until apogee
-    rocket.sim_to_apogee()
 
-    # Record results
-    apogees.append(rocket.height_agl / 0.3048)
-    print(len(apogees))
+# Define a range of burn_time values to solve for
+burn_time_vals = np.linspace(10, 40, 40)  # Burn time values
+dry_mass_guess = 120  # Initial guess for dry mass, adjust if needed
 
-# Analyze and plot results
-plt.figure(figsize=(12, 6))
+# Output file
+output_file = 'dry_mass_solutions.csv'
 
-# Histogram of apogees
-plt.hist(apogees, bins=30, color='skyblue', edgecolor='black')
-plt.xlabel('Apogee (ft)')
-plt.ylabel('Frequency')
-plt.title('Monte Carlo Simulation: Apogee Distribution')
+# Create the CSV file and write the header
+with open(output_file, mode='w', newline='') as file:
+    writer = csv.writer(file)
+    writer.writerow(['Burn Time', 'Dry Mass for eq1', 'Dry Mass for eq2'])  # Write header
 
-plt.tight_layout()
+
+    # Function to compute dry_mass solutions and write to CSV
+    def compute_and_save_solutions(burn_time):
+        dm_eq1 = solve_eq1_for_burn_time(burn_time, dry_mass_guess)
+        dm_eq2 = solve_eq2_for_burn_time(burn_time, dry_mass_guess)
+
+        # Write to CSV
+        with open(output_file, mode='a', newline='') as file:
+            writer = csv.writer(file)
+            writer.writerow([burn_time, dm_eq1, dm_eq2])  # Write the current results
+
+        return dm_eq1, dm_eq2
+
+
+    # Run computations in parallel for all burn_time values
+    # Serial execution of computations for all burn_time values
+    results = []
+    for bt in burn_time_vals:
+        result = compute_and_save_solutions(bt)
+        print(result)
+        results.append(result)
+
+    # results = Parallel(n_jobs=-1)(delayed(compute_and_save_solutions)(bt) for bt in burn_time_vals)
+
+# Unzip results into separate arrays
+dry_mass_for_eq1, dry_mass_for_eq2 = zip(*results)
+
+# Convert results to numpy arrays
+dry_mass_for_eq1 = np.array(dry_mass_for_eq1)
+dry_mass_for_eq2 = np.array(dry_mass_for_eq2)
+
+# Plot the results
+plt.plot(burn_time_vals, dry_mass_for_eq1, label='eq1 = 0 (Apogee constraint)', color='red')
+plt.plot(burn_time_vals, dry_mass_for_eq2, label='eq2 = 0 (Acceleration constraint)', color='blue')
+
+plt.xlabel('Burn Time')
+plt.ylabel('Dry Mass')
+plt.title('Implicit Functions for eq1 = 0 and eq2 = 0 (Optimized)')
+plt.legend()
+plt.grid(True)
 plt.show()

@@ -259,6 +259,7 @@ class UpdateSpreadsheet:
 
         # Perform rocket simulation
         start_time = time.process_time()
+        self.rocket.motor.initial_outputs()
         self.rocket.simulate_to_ground()
         elapsed_time = time.process_time() - start_time
         logging.info(f"Rocket simulation completed in {elapsed_time:.3f} seconds")

@@ -8,7 +8,7 @@ import time
 import logging
 import numpy as np
 import matplotlib.pyplot as plt
-
+from scipy.optimize import least_squares, fsolve
 
 # Self-Explanatory
 def inches_to_meters(inches):
@@ -61,11 +61,11 @@ if __name__ == '__main__':
 
     # Initialize Rocket object
     rocket = initialize(40)
-
     # Initialize spreadsheet updater
     update_spreadsheet = UpdateSpreadsheet(rocket)
     update_spreadsheet.process_spreadsheet_update(start_time=start_time)
-    update_spreadsheet.rocket.motor.initial_output()
+    update_spreadsheet.rocket.motor.initial_outputs()
+
 
     # Log the total elapsed process time
     end_time = time.process_time()
@@ -74,7 +74,8 @@ if __name__ == '__main__':
 
 
     logging.info(f"Apogee: {max(update_spreadsheet.rocket.dataframe['Height AGL']):.2f} m and {max(update_spreadsheet.rocket.dataframe['Height AGL'])*100/2.56/12:.2f} ft")
-    logging.info(f"Tank size: {update_spreadsheet.rocket.tank_size()}")
+    logging.info(f"Tank size: {update_spreadsheet.rocket.motor.tank_mass:.2f} kg")
+    logging.info(f"Leftover Mass: {update_spreadsheet.rocket.motor.other_mass:.2f} kg")
     exit()
 
     rockets = [initialize(i) for i in range(20,50,1)]

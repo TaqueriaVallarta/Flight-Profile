@@ -1,232 +1,289 @@
-from math import sqrt, pi
-import sympy as sp
 import numpy as np
-import matplotlib.pyplot as plt
+from numpy import sqrt, pi
+from scipy import integrate, optimize
+from scipy.optimize import least_squares, fsolve
+from lib.Motor.PlotFileRead import load_plt_to_dataframe
+from pint import UnitRegistry, Quantity
+from matplotlib import pyplot as plt
+from rocketcea.cea_obj import CEA_Obj
 import logging
+logging.basicConfig(level=logging.INFO, format='%(message)s')
+
+ureg = UnitRegistry()
+from rocketcea.cea_obj import CEA_Obj
+
 
 class Motor:
-    def __init__(self, dry_mass_rkt, burn_time, Isp, vf=.875, OF=6.5):
-        self.g0 = 9.81  # Gravity (m/s^2)
-        self.Isp = Isp  # Specific Impulse
-        self.Veq = self.g0 * self.Isp  # Equivalent Velocity
-        self.rho_ox = 772.5  # Density of Nitrous (kg/m^3)
-        self.rho_f = 940  # Density of HTPB (kg/m^3)
-        self.dry_mass_rkt = dry_mass_rkt  # Dry Mass of Rocket in kg
-        self.VF = vf  # Volumetric Loading Factor typical values in sutton (.8-.95)
-        self.burn_time = burn_time
-        self.OF = OF  # Oxidizer to Fuel ratio
-        self.outer_grain_radius = (7.25 / 2) * (2.54 / 100)  # Outer grain radius (m)
-        self.final_thickness = .25*2.54/100 # Final grain thickness (m)
-        self.final_grain_radius = self.outer_grain_radius - self.final_thickness  # Final Grain Radius after burn (m)
-        self.n = 0.346  # Coefficient for regression r\beg
-        self.a0 = .417 / (10 ** (self.n + 3))
 
-        # Calculate parameters that depend on acceleration
-        self.acceleration, self.latex_equation, self.equation = self.solve_for_acceleration()
+    def __init__(self, m_other, burn_time, tank_length = 3.35):
+        # Constants (as placeholders)
+        self.initial_OF = None
+        self.OF_ideal = 6.5
+        self.initial_grain_radius = None
+        self.grain_length = None
+        self.CEA = CEA_Obj(fuelName='HTPB',oxName='N2O')
 
-        # Values based on the calculated acceleration
-        self.total_impulse = (self.acceleration * self.burn_time * self.dry_mass_rkt * self.Veq) / \
-                             (self.Veq - self.acceleration * self.burn_time)
-        self.mass_prop = self.total_impulse / self.Veq  # Propellant Total Mass (kg)
-        self.mass_fuel = self.mass_prop / (1 + self.OF)  # Fuel Mass (kg)
-        self.mass_ox = (self.mass_prop * self.OF) / (1 + self.OF)  # Oxidizer Mass (kg)
-        self.mean_thrust = self.total_impulse / self.burn_time  # Mean Thrust (N)
-        self.V_fuel = self.mass_fuel / self.rho_f  # Required Volume of Fuel (m^3)
-        self.initial_grain_radius = sqrt(self.mass_fuel / (self.rho_f * pi * self.VF))  # Initial Grain Radius (m)
-        self.grain_length = self.V_fuel / (
-                pi * (self.final_grain_radius ** 2 - self.initial_grain_radius ** 2))  # Length of fuel grain (m)
-        self.mass_extra_htpb = self.rho_f * self.grain_length * pi * (
-                self.outer_grain_radius ** 2 - self.final_grain_radius ** 2)  # Leftover mass of HTPB
-        self.wet_mass = self.mass_prop + self.dry_mass_rkt  # Wet mass of rocket (kg)
+        self.tank_length = tank_length * ureg.meters
+        self.tank_thickness = (.25 * ureg.inches).to_base_units()
+        self.tank_outer_radius = (4 * ureg.inches).to_base_units()
+        self.tank_inner_radius = self.tank_outer_radius - self.tank_thickness
 
-        # Injector Values initializing
-        self.delta_p = 85 * 6894.776  # Change in pressure across injector (Pa)
-        self.N = 16  # Number of Injectors
-        self.A0 = (self.mass_fuel * self.OF) / (
-                self.burn_time * sqrt(2 * self.delta_p * self.rho_ox))  # Equivalent Injector Area (m^2)
-        self.K = 1.8  # Head Loss Coefficient
-        self.inj_radius = sqrt(self.A0 * sqrt(self.K) / (pi * self.N))  # Injector Radius (m)
-        self.mass_flow_ox = self.mass_ox / self.burn_time
+        self.rho_tank = 2700 * ureg.kg / ureg.meter**3 # T6-6061 kg/m^3
 
-        # Minimums and Maximums
-        self.min_accel = 4.5 * self.g0
-        self.min_length = (self.min_accel * self.burn_time * self.dry_mass_rkt * self.VF) / (
-                pi * self.rho_f * self.final_grain_radius ** 2 * self.VF * (1 + self.OF) * (
-                self.Veq - self.min_accel * self.burn_time) - self.min_accel * self.burn_time * self.dry_mass_rkt)
-        self.max_length = 1.25  # Max length (1.25 meters)
-        self.length = np.array([self.min_length, self.max_length])
-        self.accel = (self.rho_f * self.length * pi * self.final_grain_radius ** 2 * (
-                1 + self.OF) * self.Veq * self.VF) / \
-                     (self.burn_time * ((
-                                                self.VF + 1) * self.dry_mass_rkt + self.rho_f * self.length * pi * self.final_grain_radius ** 2 * (
-                                                1 + self.OF) * self.VF))
+        self.rho_ox = 772.25 * ureg.kg / ureg.meter**3 # N2O kg/m^3
+        self.rho_fuel = 940 * ureg.kg / ureg.meter**3 # HTPB kg/m^3
+        self.ullage = 1.1 # fraction of total tank volume to usable tank volume
 
-        # Inert Mass Fraction
-        self.f_inert = self.dry_mass_rkt / self.wet_mass
+        self.burn_time = burn_time*ureg.seconds # seconds
+        self.tank_volume = pi*self.tank_length*(self.tank_outer_radius**2-self.tank_inner_radius**2)
+        self.tank_inner_volume = pi*self.tank_length*self.tank_inner_radius**2
+        self.oxidizer_mass = self.rho_ox*self.tank_inner_volume / self.ullage
+        self.ox_flow = self.oxidizer_mass / self.burn_time
+        self.tank_mass = self.rho_tank*self.tank_volume
+        self.chamber_pressure = (500 * ureg.lbf / ureg.inch**2).to_base_units()
+        self.exit_pressure = 60000 * ureg.N / ureg.meter**2
+        self.n = 0.364  # coefficient
+        self.m = 0.293  # coefficient
+        self.a = (.07577*10**(3*self.m-self.n-3)) * ureg.meter**(1-self.m+2*self.n) * ureg.seconds**(self.n-1) / ureg.kg**(self.n)
 
-    def solve_for_acceleration(self):
-        # Define the symbols
-        V_F, r_f, rho_f, OF, V_eq, t_B, x, m_dry0, a0, n = sp.symbols('V_F r_f rho_f OF V_eq t_B x m_dry0 a0 n')
+        self.outer_grain_radius = (7.25/2 * ureg.inches).to_base_units()
+        self.final_grain_thickness = (.25*ureg.inches).to_base_units()
+        self.final_grain_radius = self.outer_grain_radius - self.final_grain_thickness
+        self.length_radius_solver()
 
-        # Define the left-hand side of the equation
-        lhs = r_f ** (2 * n + 1)
+        self.throat_area_calced = self.throat_area()
 
-        # Define the right-hand side of the equation
-        rhs = (x / (V_eq - x * t_B)) ** n * (
-                a0 * t_B * (2 * n + 1) * (m_dry0 * OF / (pi * (1 + OF))) ** n +
-                (t_B * m_dry0 / ((rho_f * pi * V_F) * (1 + OF))) ** ((2 * n + 1) / 2) *
-                (x / (V_eq - x * t_B)) ** (1 / 2)
-        )
+        self.area_ratio = self.eps()
+        self.exit_area = self.area_ratio * self.throat_area_calced
+        if type(m_other)!=Quantity:
+            m_other *= ureg.kilograms
+        self.other_mass = m_other # other mass
+        self.extra_fuel_mass = self.grain_length*self.rho_fuel*pi*(self.outer_grain_radius**2-self.final_grain_radius**2)
+        self.dry_mass = self.tank_mass + self.extra_fuel_mass + self.other_mass
 
-        # Full symbolic equation
-        equation = sp.simplify(sp.Eq(lhs, rhs))
 
-        # Display the equation
-        sp.init_printing()  # This will enable pretty printing
-        # Substitute values into the equation
-        substituted_eq = equation.subs({
-            V_F: self.VF,
-            r_f: self.final_grain_radius,
-            rho_f: self.rho_f,
-            OF: self.OF,
-            V_eq: self.Veq,
-            t_B: self.burn_time,
-            m_dry0: self.dry_mass_rkt,
-            a0: self.a0,
-            n: self.n
-        })
-        # Solve for x (the variable on the left-hand side)
-        solution = sp.nsolve(substituted_eq, 5 * self.g0)
-        return float(solution), sp.latex(substituted_eq), equation
-
-    # This function is so that everything can just be resolvedd after updating the values ratehr than reinitializing the class
     def update_self(self):
-        # Calculate parameters that depend on acceleration
-        self.final_grain_radius = self.outer_grain_radius - self.final_thickness
-        self.acceleration, self.latex_equation, self.equation = self.solve_for_acceleration()
+        if type(self.burn_time) != Quantity:
+            self.burn_time = self.burn_time * ureg.seconds
+        if type(self.other_mass) != Quantity:
+            self.other_mass = self.other_mass * ureg.kilograms
+        if type(self.exit_pressure) != Quantity:
+            self.exit_pressure = self.exit_pressure * ureg.newtons / ureg.meter**2
+        self.outer_grain_radius = (7.25/2 * ureg.inches).to_base_units()
+        self.final_grain_thickness = (.25*ureg.inches).to_base_units()
+        self.final_grain_radius = self.outer_grain_radius - self.final_grain_thickness
+        self.ox_flow = self.oxidizer_mass / self.burn_time
+        self.length_radius_solver()
+        self.area_ratio = self.eps()
+        self.throat_area_calced = self.throat_area()
+        self.exit_area = self.area_ratio * self.throat_area_calced
+        self.extra_fuel_mass = self.grain_length * self.rho_fuel * pi * (
+                    self.outer_grain_radius ** 2 - self.final_grain_radius ** 2)
+        self.dry_mass = self.tank_mass + self.extra_fuel_mass + self.other_mass
 
-        # Values based on the calculated acceleration
-        self.total_impulse = (self.acceleration * self.burn_time * self.dry_mass_rkt * self.Veq) / \
-                             (self.Veq - self.acceleration * self.burn_time)
-        self.mass_prop = self.total_impulse / self.Veq  # Propellant Total Mass (kg)
-        self.mass_fuel = self.mass_prop / (1 + self.OF)  # Fuel Mass (kg)
-        self.mass_ox = (self.mass_prop * self.OF) / (1 + self.OF)  # Oxidizer Mass (kg)
-        self.mean_thrust = self.total_impulse / self.burn_time  # Mean Thrust (N)
-        self.V_fuel = self.mass_fuel / self.rho_f  # Required Volume of Fuel (m^3)
-        self.initial_grain_radius = sqrt(self.mass_fuel / (self.rho_f * pi * self.VF))  # Initial Grain Radius (m)
-        self.grain_length = self.V_fuel / (
-                pi * (self.final_grain_radius ** 2 - self.initial_grain_radius ** 2))  # Length of fuel grain (m)
-        self.mass_extra_htpb = self.rho_f * self.grain_length * pi * (
-                self.outer_grain_radius ** 2 - self.final_grain_radius ** 2)  # Leftover mass of HTPB
-        self.wet_mass = self.mass_prop + self.dry_mass_rkt  # Wet mass of rocket (kg)
+    def v_eq(self, time, ambient_pressure, fudge_factor):
+        fac_CR = self.contraction_ratio(time)
+        self.CEA.fac_CR = fac_CR
+        Isp = self.CEA.estimate_Ambient_Isp(Pc=self.chamber_pressure.magnitude, MR=self.OF_t(time).magnitude, eps=self.area_ratio, Pamb=ambient_pressure)[0]
+        return Isp * 9.81 * fudge_factor
 
-        # Injector Values initializing
-        self.delta_p = 85 * 6894.776  # Change in pressure across injector (Pa)
-        self.N = 16  # Number of Injectors
-        self.A0 = (self.mass_fuel * self.OF) / (
-                self.burn_time * sqrt(2 * self.delta_p * self.rho_ox))  # Equivalent Injector Area (m^2)
-        self.K = 1.8  # Head Loss Coefficient
-        self.inj_radius = sqrt(self.A0 * sqrt(self.K) / (pi * self.N))  # Injector Radius (m)
-        self.mass_flow_ox = self.mass_ox / self.burn_time
-
-        # Minimums and Maximums
-        self.min_accel = 4.5 * self.g0
-        self.min_length = (self.min_accel * self.burn_time * self.dry_mass_rkt * self.VF) / (
-                pi * self.rho_f * self.final_grain_radius ** 2 * self.VF * (1 + self.OF) * (
-                self.Veq - self.min_accel * self.burn_time) - self.min_accel * self.burn_time * self.dry_mass_rkt)
-        self.max_length = 1.25  # Max length (1.25 meters)
-        self.length = np.array([self.min_length, self.max_length])
-        self.accel = (self.rho_f * self.length * pi * self.final_grain_radius ** 2 * (
-                1 + self.OF) * self.Veq * self.VF) / \
-                     (self.burn_time * ((
-                                                self.VF + 1) * self.dry_mass_rkt + self.rho_f * self.length * pi * self.final_grain_radius ** 2 * (
-                                                1 + self.OF) * self.VF))
-
-        # Inert Mass Fraction
-        self.f_inert = self.dry_mass_rkt / self.wet_mass
+    def eps(self):
+        return self.CEA.get_eps_at_PcOvPe(Pc=self.chamber_pressure.to(ureg.psi).magnitude, MR=self.OF_ideal, PcOvPe=(self.chamber_pressure/self.exit_pressure).magnitude)
 
 
-    def initial_output(self):
-        # Check if acceleration is within limits (considering self.accel is an array)
-        accel_status = "within limits" if (
-                self.min_accel <= self.acceleration <= np.max(self.accel)) else "out of limits"
+    def OF_t(self, time):
+        return self.ox_flow / self.fuel_flow(time)
 
-        # Check if grain length is within outer boundaries
-        grain_length_status = "within boundaries" if self.min_length <= self.grain_length <= self.max_length else "out of boundaries"
-
-        # Conversion factors
-        meter_to_feet = 3.28084  # 1 meter = 3.28084 feet
-        kg_to_lb = 2.20462  # 1 kg = 2.20462 pounds
-
-        # Convert lengths to feet and masses to pounds
-        inj_diameter_inch = self.inj_radius * 2 * 39.37  # Injector diameter in inches
-        initial_grain_radius_inch = self.initial_grain_radius * 39.37  # Initial grain radius in inches
-        grain_length_feet = self.grain_length * meter_to_feet  # Grain length in feet
-        fuel_mass_lb = self.mass_fuel * kg_to_lb  # Fuel mass in pounds
-        ox_mass_lb = self.mass_ox * kg_to_lb  # Oxidizer mass in pounds
-        extra_htpb_mass_lb = self.mass_extra_htpb * kg_to_lb  # Extra HTPB mass in pounds
-        usable_mass_lb = (self.dry_mass_rkt - self.mass_extra_htpb) * kg_to_lb  # Usable mass in pounds
-
-        # Print the output
-        if accel_status == "within limits":
-            logging.info(f"Acceleration is {accel_status} and is {self.acceleration:.2f} m/s^2 or {self.acceleration/self.g0:.2f} Gs")
-        else:
-            logging.warning(f"Acceleration is {accel_status} and is {self.acceleration:.2f} m/s^2 or {self.acceleration/self.g0:.2f} Gs")
-        logging.info(f"Acceleration limits are {self.min_accel:.2f} m/s^2 to {np.max(self.accel):.2f} m/s^2")
-        logging.info(f"Grain length is {grain_length_status} and is {self.grain_length:.2f} m or {grain_length_feet:.2f} ft")
-        logging.info(f"Minimum Grain Length: {self.min_length:.2f} m")
-        logging.info(f"Mean thrust: {self.mean_thrust:.2f} N")
-        logging.info(f"Total impulse: {self.total_impulse:.2f} Ns")
-        logging.info(f"Equivalent Injector Area: {self.A0*100*2:.2f} cm^2")
-        logging.info(f"Initial grain radius: {initial_grain_radius_inch:.2f} inches")
-        logging.info(f"Final grain radius: {self.final_grain_radius*100/2.54:.2f} inches")
-        logging.info(f"Fuel mass: {self.mass_fuel:.2f} kg ({fuel_mass_lb:.2f} lbs)")
-        logging.info(f"Oxidizer mass: {self.mass_ox:.2f} kg ({ox_mass_lb:.2f} lbs)")
-        logging.info(f"Extra HTPB mass: {self.mass_extra_htpb:.2f} kg ({extra_htpb_mass_lb:.2f} lbs)")
-        logging.info(
-            f"Usable mass (rocket dry mass - extra HTPB): {self.dry_mass_rkt - self.mass_extra_htpb:.2f} kg ({usable_mass_lb:.2f} lbs)")
-        logging.info(f"Equivalent injector area: {self.A0:.6f} m^2")
-        logging.info(f"Inert Mass Fraction: {self.f_inert * 100:.1f}%")
-        logging.info(f"Total Wet Mass: {self.wet_mass:.2f} kg")
-        # Example usage
-
-    def mass_fuel_time(self, time):
-        # Calculate the first term inside the parentheses
-        term_1 = (self.a0 * (2 * self.n + 1) * (
-                    self.mass_flow_ox / pi) ** self.n * time) + self.initial_grain_radius ** (2 * self.n + 1)
-
-        # Raise the term to the power of 2 / (2n + 1)
-        term_1_powered = term_1 ** (2 / (2 * self.n + 1))
-
-        # Subtract R_i^2 (initial grain radius squared)
-        result = term_1_powered - self.initial_grain_radius ** 2
-
-        # Multiply the result by pi, rho_f, and L_grain
-        mass_fuel = pi * self.rho_f * self.grain_length * result
-
-        return mass_fuel
-
-    def mass_ox_time(self, time):
-        return self.mass_flow_ox * time
+    def radius(self,time):
+        if type(time) != Quantity:
+            time = time * ureg.seconds
+        term1 = self.a * (2 * self.n + 1) * self.grain_length ** self.m * (self.ox_flow / pi) ** self.n
+        term1 = term1.magnitude
+        time = time.magnitude
+        initial_grain_radius = self.initial_grain_radius.magnitude
+        radius = (term1*time + initial_grain_radius ** (2 * self.n + 1))**(1/(2*self.n + 1)) * ureg.meter
+        return radius
 
     def mass(self, time):
-        if time <= self.burn_time:
-            return self.wet_mass - self.mass_fuel_time(time) - self.mass_ox_time(time)
-        else:
-            return self.wet_mass - self.mass_fuel_time(self.burn_time) - self.mass_ox_time(self.burn_time)
+        if time <= self.burn_time.magnitude:
+            oxmass = self.oxidizer_mass-(self.ox_flow*time*ureg.seconds)
+            fuelmass = self.fuel_mass(time)
+            return (oxmass + fuelmass + self.dry_mass).magnitude
+        return self.dry_mass.magnitude
 
-    def mass_flow_fuel(self, time):
-        return 2 * pi * self.rho_f * self.grain_length * self.a0 * (self.mass_flow_ox / pi) ** self.n * (
-                    self.a0 * (2 * self.n - 1) * (
-                        self.mass_flow_ox / pi) ** self.n * time + self.initial_grain_radius ** (2 * self.n + 1)) ** (
-                    (1 - 2 * self.n) / (1 + 2 * self.n))
+    def mean_time(self, func):
+        return integrate.quad(func, 0, self.burn_time.magnitude)[0] / self.burn_time.magnitude
+
+
+    def fuel_mass(self, time):
+        return self.rho_fuel*pi*self.grain_length*(self.final_grain_radius**2-self.radius(time)**2)
+
+    def fuel_flow(self, time: Quantity):
+        if type(time)!=Quantity:
+            time *= ureg.seconds
+        time.ito_base_units()
+        term1 = (2 * pi * self.rho_fuel * self.grain_length ** (1 + self.m)).magnitude
+        radius = (self.radius(time)).magnitude
+        term2 = (self.a*(self.ox_flow/pi)**self.n*radius**((1-2*self.n)/(1+2*self.n))).magnitude
+        return term1*term2 * ureg.kg / ureg.second
 
     def mass_flow(self, time):
-        return self.mass_flow_ox + self.mass_flow_fuel(time)
+        fuel_flow = self.fuel_flow(time)
+        return fuel_flow+self.ox_flow
 
-    def thrust(self, time):
-        if time <= self.burn_time:
-            return self.mass_flow(time) * self.Veq
-        else:
+
+    def length_radius_solver(self):
+
+        burn_time = self.burn_time.magnitude
+
+        r_f = self.final_grain_radius
+        def equations(variables):
+            grain_length, initial_grain_radius= variables
+            self.grain_length = grain_length * ureg.meter
+            self.initial_grain_radius = initial_grain_radius * ureg.meter
+            grain_length *= ureg.meters
+            initial_grain_radius *= ureg.meters
+
+            eq1 = 200*(self.radius(burn_time) - self.final_grain_radius).magnitude
+            eq2 = self.OF_ideal - self.ox_flow.magnitude * self.mean_time(lambda time: self.fuel_flow(time).magnitude**-1)
+            return [eq1, eq2]
+
+        initial_guess = [.8, .05]
+        bounds = [[.4,.01], [2, r_f.magnitude]]
+        solution = least_squares(equations, initial_guess, bounds=bounds)
+
+
+        self.grain_length, self.initial_grain_radius = solution['x']
+        self.grain_length *= ureg.meters
+        self.initial_grain_radius *= ureg.meters
+        return solution['x']
+
+    def exit_area_calc(self):
+        gamma = lambda time: self.values(self.OF_t(time))[2]
+        def mach(time):
+            ratio = (self.exit_pressure/self.chamber_pressure).magnitude
+            return sqrt(2/(gamma(time)-1)*(ratio**(-(gamma(time)-1)/gamma(time))-1))
+
+        mach = self.mean_time(mach)
+        gamma = self.mean_time(gamma)
+        term1 = ((gamma+1)/2)**(-(gamma+1)/2/(gamma-1))
+        term2 = (1+((gamma-1)/2)*mach**2)**((gamma+1)/2/(gamma-1))
+
+        ratio = term1*term2 / mach
+        return ratio * self.throat_area_calced
+
+    def exit_mach(self, time: Quantity):
+        area_ratio = self.exit_area / self.throat_area_calced
+        gamma = self.values(self.OF_t(time))[2]
+
+        # Precompute constant factor for efficiency
+        constant_factor = ((gamma + 1) / 2) ** (-(gamma + 1) / (2 * (gamma - 1)))
+
+        # Function to calculate area ratio for given Mach number
+        def area_ratio2(M_e):
+            return constant_factor * (1 + (gamma - 1) / 2 * M_e ** 2) ** ((gamma + 1) / (2 * (gamma - 1))) / M_e
+
+        # Function, when it equals 0 M_e is solved
+        def func(M_e):
+            return (area_ratio - area_ratio2(M_e)).magnitude
+
+        # Solve for exit Mach number, using an initial guess
+        mach_exit = fsolve(func, np.array([3]))[0]
+
+        return mach_exit
+
+    def exit_vel(self, time):
+        R = 8314 * ureg.joules / ureg.kmol / ureg.kelvin
+        molar_mass, temp, gamma = self.values(self.OF_t(time))
+        molar_mass *= ureg.kg / ureg.kmol
+        temp *= ureg.kelvin
+        v_e =  self.exit_mach(time)*sqrt(gamma*R*temp/molar_mass)
+        return v_e.to_base_units()
+
+
+
+    def throat_area(self):
+        # Constants and time-independent values
+        burn_time = self.burn_time.magnitude
+        R_universal = 8314 * ureg.joules / (ureg.kelvin * ureg.kmol)
+        chamber_pressure_inv = 1 / self.chamber_pressure
+        # Define functions to compute required values at a given time
+        def values_at_time(time):
+            return self.values(self.OF_t(time))
+
+        # Precompute reusable values
+        def area(time):
+            # Extract needed values
+            values = values_at_time(time)
+            molar_mass = values[0] * ureg.kg / ureg.kmol
+            temp = values[1] * ureg.kelvin
+            gamma = values[2]
+
+            # Compute derived quantities
+            R_specific = R_universal / molar_mass
+            mdot = self.mass_flow(time * ureg.second)
+            temp_sqrt = sqrt(temp)
+            gamma_sqrt = sqrt(R_specific / gamma)
+
+            # Compute constant part of the formula for the area ratio
+            term1 = ((gamma + 1) / 2) ** ((gamma + 1) / (2 * (gamma - 1)))
+
+            # Calculate area at the given time
+            return mdot * temp_sqrt * chamber_pressure_inv * gamma_sqrt * term1
+
+        # Minimize the negative area to find the maximum throat area
+        result = optimize.minimize_scalar(lambda time: area(time), bounds=[0, burn_time], method='bounded')
+
+        # Calculate max throat area at the optimal time
+        max_throat_area = area(result['x']).to_base_units()
+
+        return max_throat_area.to_base_units()
+
+    def values(self, of_value):
+        eps = self.eps()
+        psi = self.chamber_pressure.to(ureg.lbf / ureg.inch ** 2).magnitude
+
+        mass, gamma = self.CEA.get_Throat_MolWt_gamma(Pc=psi,
+                                                      MR=of_value, eps=eps)
+        temp = self.CEA.get_Temperatures(Pc=psi, MR=of_value, eps=eps)[2]
+        return mass, temp, gamma
+
+    def thrust(self, time, ambient_pressure, fudge_factor):
+        if time*ureg.seconds > self.burn_time:
             return 0
 
+        return self.v_eq(time, ambient_pressure, fudge_factor)*self.mass_flow(time).magnitude
+
+        thrust_mass_flow = (self.mass_flow(time)*self.exit_vel(time, fudge_factor)).to_base_units()
+        pressure_force = ((self.exit_pressure - (ambient_pressure * ureg.newton/ ureg.meter**2))*self.exit_area).to_base_units()
+        return (thrust_mass_flow+pressure_force).magnitude
+
+    def contraction_ratio(self, time):
+        ratio = (pi*self.radius(time*ureg.seconds)**2/self.throat_area_calced).magnitude
+        return ratio
+
+    def initial_outputs(self):
+        logging.info(f"Grain Length: {self.grain_length:.3f}")
+        logging.info(f"Initial Radius (in): {self.initial_grain_radius.to(ureg.inches):.3f}")
+        logging.info(f"Ox Flow: {self.ox_flow:.3f}")
+        logging.info(f"Throat Area: {self.throat_area_calced.to(ureg.inches**2):.3f}")
+        logging.info(f"Throat Radius: {(self.throat_area_calced.to(ureg.inches**2)/pi)**.5:.3f}")
+        logging.info(f"Initial OF Ratio: {self.OF_t(0):.3f}")
+        logging.info(f"Exit Area: {self.exit_area.to(ureg.inches**2):.3f}")
+        logging.info(f"Exit Radius: {(self.exit_area.to(ureg.inches**2)/pi)**.5}:.3f")
+        logging.info(f"Mean OF Ratio: {self.mean_time(self.OF_t):.3f}")
+        logging.info(f"Mean Exit Velocity: {self.mean_time(lambda time: self.exit_vel(time).magnitude)}")
+        logging.info(f"Mean Exit Mach: {self.mean_time(self.exit_mach)}")
+        logging.info(f"Mean Contraction Ratio: {self.mean_time(self.contraction_ratio):.3f}")
+        logging.info(f"Expansion Ratio: {self.exit_area/self.throat_area_calced:.2f}")
+        logging.info(f"Mean Gamma: {self.mean_time(lambda time: self.values(self.OF_t(time))[2]):.3f}")
+        logging.info(f"Mean Molar Mass: {self.mean_time(lambda time: self.values(self.OF_t(time))[0]):.2f}")
+        logging.info(f"Mean Temperature: {self.mean_time(lambda time: self.values(self.OF_t(time))[1]):.1f}")
+        logging.info(f"Dry Mass: {self.tank_mass+self.extra_fuel_mass+self.other_mass:.2f}")
+        logging.info(f"Fuel Mass: {self.fuel_mass(0):.2f}")
+        logging.info(f"Wet Mass: {self.oxidizer_mass+self.dry_mass+self.fuel_mass(self.burn_time):.2f}")
+        logging.info(f"Inert Mass Fraction: {self.dry_mass/(self.oxidizer_mass+self.dry_mass+ self.fuel_mass(self.burn_time))}")
+
+if __name__ == '__main__':
+    motor = Motor(40, 22)
+    motor.initial_outputs()
